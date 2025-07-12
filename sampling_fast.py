@@ -111,7 +111,7 @@ class Predictor(abc.ABC):
     pass
 
 
-@register_predictor(name='euler_maruyama')
+@register_predictor(name='euler_maruyama_adaptive')
 class EulerMaruyamaPredictor(Predictor):
   def __init__(self, sde, score_fn, shape=None, eps=1e-3, 
     abstol = 1e-2, reltol = 1e-2, safety = .9, exp=0.9):

@@ -114,7 +114,7 @@ def get_sampling_fn(config, sde, shape, inverse_scaler, eps):
     
     # Configuration pour fast sampling - utilise tes paramètres existants ou defaults
     if not hasattr(config.sampling, 'sampling_reltol'):
-        config.sampling.sampling_reltol = 0.02  # default balance
+        config.sampling.sampling_reltol = 1e-2 # default balance
     if not hasattr(config.sampling, 'sampling_abstol'):
         config.sampling.sampling_abstol = 1e-2
     if not hasattr(config.sampling, 'sampling_safety'):
@@ -126,6 +126,7 @@ def get_sampling_fn(config, sde, shape, inverse_scaler, eps):
     if not hasattr(config.sampling, 'sampling_method'):
         config.sampling.method = 'adaptive'  # ou 'euler_maruyama'
     
+    config.sampling.corrector = "none"
     # Utilise le système fast sampling
     sampling_fn = sampling_fast.get_sampling_fn(config, sde, shape, eps, config.device)
 
@@ -422,14 +423,6 @@ def get_pc_sampler(sde, shape, predictor, corrector, inverse_scaler, snr,
         x, x_mean = corrector_update_fn(x, vec_t, model=model)
         x, x_mean = predictor_update_fn(x, vec_t, model=model)
       
-      # Denoising with Tweeddie's Formula
-      #if denoise :
-      #  t_eps = torch.ones(shape[0], device=device) * eps
-      #  score = model(x, t_eps)
-      #  _, sigma_eps = sde.marginal_prob(torch.zeros_like(x), t_eps)
-      #  sigma_eps_squared = sigma_eps ** 2
-      #  x = x + sigma_eps_squared * score
-
       return inverse_scaler(x_mean if denoise else x), sde.N * (n_steps + 1)
 
   return pc_sampler
