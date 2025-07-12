@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+build/
+dist/
+
+# Outputs
+samples/
+data/
+experiments/*/checkpoints/*
+!experiments/*/checkpoints/.gitkeep
+
+# System
+.DS_Store
+*.log

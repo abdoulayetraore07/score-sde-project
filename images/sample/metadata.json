@@ -1,0 +1,30 @@
+{
+  "source_file": "/Users/abdoulayetraore/Downloads/score_sde_pytorch_ori/BACK_UP_REAL/afhq_512_backup_complet_20250630_184403/samples/iter_500000/sample.np",
+  "file_type": "np/npy",
+  "is_single_array": true,
+  "arrays_info": {
+    "array": {
+      "shape": [
+        32,
+        512,
+        512,
+        3
+      ],
+      "dtype": "uint8",
+      "min": 0.0,
+      "max": 255.0,
+      "mean": 114.28802788257599
+    }
+  },
+  "extraction_info": {
+    "array": {
+      "images_extracted": 32,
+      "image_shape": [
+        512,
+        512,
+        3
+      ]
+    }
+  },
+  "images_extracted": 32
+}

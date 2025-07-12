@@ -1,0 +1,279 @@
+.
+├── __pycache__
+│   ├── controllable_generation.cpython-39.pyc
+│   ├── datasets.cpython-39.pyc
+│   ├── debug.cpython-310.pyc
+│   ├── debug.cpython-39.pyc
+│   ├── evaluation.cpython-39.pyc
+│   ├── likelihood.cpython-39.pyc
+│   ├── losses.cpython-39.pyc
+│   ├── run_lib.cpython-39.pyc
+│   ├── sampling.cpython-39.pyc
+│   ├── sde_lib.cpython-310.pyc
+│   ├── sde_lib.cpython-39.pyc
+│   ├── train_afhq_classifier.cpython-39.pyc
+│   └── utils.cpython-39.pyc
+├── arborescence.txt
+├── assets
+│   ├── cond_gen_afhq_512
+│   │   ├── 0001.png
+│   │   ├── 0006.png
+│   │   ├── 0010.png
+│   │   ├── 0012.png
+│   │   ├── 0013.png
+│   │   ├── 0015.png
+│   │   ├── 0023.png
+│   │   ├── 0040.png
+│   │   ├── 0045.png
+│   │   ├── 0049.png
+│   │   ├── 0054.png
+│   │   ├── 0064.png
+│   │   ├── 0074.png
+│   │   ├── 0086.png
+│   │   ├── 0089.png
+│   │   ├── 0146.png
+│   │   ├── 0147.png
+│   │   ├── 0234.png
+│   │   ├── 0354.png
+│   │   ├── 0479.png
+│   │   ├── 0538.png
+│   │   ├── 0551.png
+│   │   ├── 0589.png
+│   │   ├── 0641.png
+│   │   ├── 0830.png
+│   │   ├── 0845.png
+│   │   ├── 0853.png
+│   │   ├── 1042.png
+│   │   ├── 1165.png
+│   │   ├── 1167.png
+│   │   ├── 1169.png
+│   │   ├── 1189.png
+│   │   ├── 1197.png
+│   │   ├── 1220.png
+│   │   ├── 1235.png
+│   │   ├── 1269.png
+│   │   ├── cat.png
+│   │   ├── dog.png
+│   │   └── wild.png
+│   ├── cond_gen_celebahq_256
+│   │   ├── 00000.jpg
+│   │   ├── 00004.jpg
+│   │   ├── 00007.jpg
+│   │   ├── 00013.jpg
+│   │   ├── 00020.jpg
+│   │   ├── 00023.jpg
+│   │   ├── 00096.jpg
+│   │   ├── 00118.jpg
+│   │   ├── 00119.jpg
+│   │   └── 00144.jpg
+│   ├── cond_gen_church
+│   │   ├── image_10.jpg
+│   │   ├── image_16.jpg
+│   │   ├── image_19.jpg
+│   │   ├── image_2.jpg
+│   │   ├── image_3.jpg
+│   │   ├── image_4.jpg
+│   │   ├── image_5.jpg
+│   │   ├── image_6.jpg
+│   │   ├── image_7.jpg
+│   │   └── image.jpg
+│   ├── cond_gen_ffhq_1024
+│   │   ├── 69942.png
+│   │   ├── 69944.png
+│   │   ├── 69945.png
+│   │   ├── 69948.png
+│   │   ├── 69971.png
+│   │   ├── 69977.png
+│   │   ├── 69985.png
+│   │   ├── 69988.png
+│   │   ├── 69991.png
+│   │   └── 69994.png
+│   ├── public
+│   │   ├── celebahq_256.jpg
+│   │   ├── church.jpeg
+│   │   ├── ffhq_1024.jpeg
+│   │   ├── ffhq_samples.jpg
+│   │   └── schematic.jpg
+│   └── stats
+├── classifier_trainer
+│   ├── evaluate_noise_curve_detailed.py
+│   ├── evaluate_noise_levels.py
+│   ├── pretain_afhq_clean.py
+│   ├── test_classifier_confusion.py
+│   └── train_afhq_classifier.py
+├── compute_dataset_stats.py
+├── compute_likelihood.py
+├── configs
+│   ├── __pycache__
+│   │   ├── default_lsun_configs.cpython-310.pyc
+│   │   └── default_lsun_configs.cpython-39.pyc
+│   ├── default_lsun_configs.py
+│   └── ve
+│       ├── __pycache__
+│       ├── afhq_512_ncsnpp_continuous.py
+│       ├── celebahq_256_ncsnpp_continuous.py
+│       ├── church_ncsnpp_continuous.py
+│       └── ffhq_1024_ncsnpp_continuous.py
+├── controllable_generation.py
+├── data
+├── datasets.py
+├── debug.py
+├── evaluation.py
+├── experiments
+│   ├── afhq_512_ncsnpp_continuous
+│   │   ├── checkpoints
+│   │   └── checkpoints-meta
+│   ├── afhq_classifier
+│   ├── celebahq_256_ncsnpp_continuous
+│   │   ├── checkpoints
+│   │   └── checkpoints-meta
+│   ├── church_ncsnpp_continuous
+│   │   ├── checkpoints
+│   │   └── checkpoints-meta
+│   └── ffhq_1024_ncsnpp_continuous
+│       ├── checkpoints
+│       └── checkpoints-meta
+├── images
+│   └── sample
+│       ├── metadata.json
+│       ├── sample_array_000.png
+│       ├── sample_array_001.png
+│       ├── sample_array_002.png
+│       ├── sample_array_003.png
+│       ├── sample_array_004.png
+│       ├── sample_array_005.png
+│       ├── sample_array_006.png
+│       ├── sample_array_007.png
+│       ├── sample_array_008.png
+│       ├── sample_array_009.png
+│       ├── sample_array_010.png
+│       ├── sample_array_011.png
+│       ├── sample_array_012.png
+│       ├── sample_array_013.png
+│       ├── sample_array_014.png
+│       ├── sample_array_015.png
+│       ├── sample_array_016.png
+│       ├── sample_array_017.png
+│       ├── sample_array_018.png
+│       ├── sample_array_019.png
+│       ├── sample_array_020.png
+│       ├── sample_array_021.png
+│       ├── sample_array_022.png
+│       ├── sample_array_023.png
+│       ├── sample_array_024.png
+│       ├── sample_array_025.png
+│       ├── sample_array_026.png
+│       ├── sample_array_027.png
+│       ├── sample_array_028.png
+│       ├── sample_array_029.png
+│       ├── sample_array_030.png
+│       └── sample_array_031.png
+├── LICENSE
+├── likelihood.py
+├── losses.py
+├── main.py
+├── models
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-310.pyc
+│   │   ├── __init__.cpython-313.pyc
+│   │   ├── __init__.cpython-39.pyc
+│   │   ├── afhq_classifier.cpython-310.pyc
+│   │   ├── afhq_classifier.cpython-39.pyc
+│   │   ├── ddpm.cpython-310.pyc
+│   │   ├── ddpm.cpython-39.pyc
+│   │   ├── ema.cpython-39.pyc
+│   │   ├── layers.cpython-310.pyc
+│   │   ├── layers.cpython-39.pyc
+│   │   ├── layerspp.cpython-310.pyc
+│   │   ├── layerspp.cpython-39.pyc
+│   │   ├── ncsnpp.cpython-310.pyc
+│   │   ├── ncsnpp.cpython-39.pyc
+│   │   ├── ncsnv2.cpython-310.pyc
+│   │   ├── ncsnv2.cpython-39.pyc
+│   │   ├── normalization.cpython-310.pyc
+│   │   ├── normalization.cpython-39.pyc
+│   │   ├── up_or_down_sampling.cpython-310.pyc
+│   │   ├── up_or_down_sampling.cpython-39.pyc
+│   │   ├── utils.cpython-310.pyc
+│   │   ├── utils.cpython-313.pyc
+│   │   └── utils.cpython-39.pyc
+│   ├── afhq_classifier.py
+│   ├── ddpm.py
+│   ├── ema.py
+│   ├── layers.py
+│   ├── layerspp.py
+│   ├── ncsnpp.py
+│   ├── ncsnv2.py
+│   ├── normalization.py
+│   ├── up_or_down_sampling.py
+│   └── utils.py
+├── op
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-310.pyc
+│   │   ├── __init__.cpython-39.pyc
+│   │   ├── fused_act.cpython-310.pyc
+│   │   ├── fused_act.cpython-39.pyc
+│   │   ├── upfirdn2d.cpython-310.pyc
+│   │   └── upfirdn2d.cpython-39.pyc
+│   ├── fused_act.py
+│   ├── fused_bias_act_kernel.cu
+│   ├── fused_bias_act.cpp
+│   ├── setup.py
+│   ├── upfirdn2d_kernel.cu
+│   ├── upfirdn2d.cpp
+│   └── upfirdn2d.py
+├── pretrained_controllable_gen.py
+├── pretrained_sampling.py
+├── run_lib.py
+├── samples
+│   ├── afhq_512
+│   │   ├── colorization
+│   │   ├── controllable
+│   │   ├── general
+│   │   └── inpainting
+│   ├── celebahq_256
+│   │   ├── colorization
+│   │   ├── general
+│   │   └── inpainting
+│   ├── church
+│   │   ├── colorization
+│   │   ├── general
+│   │   └── inpainting
+│   ├── compar_hyperparametres
+│   │   ├── A-S
+│   │   ├── ald
+│   │   ├── corrector_none
+│   │   ├── E-M
+│   │   ├── n_steps=2
+│   │   ├── n_steps=3
+│   │   ├── ODE_sampler
+│   │   ├── params_base
+│   │   ├── predictor_none
+│   │   ├── snr=0.1
+│   │   └── snr=0.2
+│   ├── ffhq_1024
+│   │   ├── colorization
+│   │   ├── general
+│   │   └── inpainting
+│   └── log_likelihoods
+│       ├── likelihood_results_afhq_512_20250704_222252.csv
+│       └── likelihood_results_afhq_512_20250704_224148.csv
+├── sampling_fast.py
+├── sampling.py
+├── sde_lib.py
+├── setup_arm64.sh
+├── tools
+│   ├── __pycache__
+│   │   ├── checkpoint_selector.cpython-39.pyc
+│   │   └── config_modifier.cpython-39.pyc
+│   ├── analyze_checkpoint.py
+│   ├── checkpoint_selector.py
+│   ├── config_modifier.py
+│   ├── npz_viewer.py
+│   ├── seed_utils.py
+│   └── test_fid_stats.py
+└── utils.py
+
+68 directories, 209 files
