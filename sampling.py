@@ -60,32 +60,8 @@ def register_corrector(cls=None, *, name=None):
     return _register(cls)
 
 
-
 def get_predictor(name):
-  """Unified predictor getter - checks both sampling.py and sampling_fast.py"""
-  # D'abord chercher dans sampling.py local
-  if name in _PREDICTORS:
-    return _PREDICTORS[name]
-  
-  # Si pas trouvé, chercher dans sampling_fast.py
-  try:
-    import sampling_fast
-    if hasattr(sampling_fast, '_PREDICTORS') and name in sampling_fast._PREDICTORS:
-      return sampling_fast._PREDICTORS[name]
-  except ImportError:
-    pass
-  
-  # Si toujours pas trouvé, erreur claire
-  available_predictors = list(_PREDICTORS.keys())
-  try:
-    import sampling_fast
-    if hasattr(sampling_fast, '_PREDICTORS'):
-        available_predictors.extend(sampling_fast._PREDICTORS.keys())
-  except ImportError:
-    pass
-  
-  raise KeyError(f"Predictor '{name}' not found. Available: {available_predictors}")
-
+  return _PREDICTORS[name]
 
 
 def get_corrector(name):
@@ -149,7 +125,6 @@ def get_sampling_fn(config, sde, shape, inverse_scaler, eps):
         config.sampling.sampling_h_init = 1e-2
     if not hasattr(config.sampling, 'sampling_method'):
         config.sampling.method = 'adaptive'  # ou 'euler_maruyama'
-    config.sampling.corrector = 'none'  # default none pour adaptive
     
     # Utilise le système fast sampling
     sampling_fn = sampling_fast.get_sampling_fn(config, sde, shape, eps, config.device)

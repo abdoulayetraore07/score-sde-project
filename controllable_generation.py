@@ -302,7 +302,7 @@ def apply_standard_strategy(classifier_grad, guidance_scale):
 
 def apply_adaptive_scale_strategy(classifier_grad, current_sigma, guidance_scale, adaptive_sigma_limit):
     """Stratégie 2: Adaptive scale linear variation."""
-    sigma_max = 784.0
+    sigma_max = 374.0
     
     if current_sigma >= adaptive_sigma_limit:
         # Zone adaptative: 0.01 à 1.0 linéairement
@@ -341,7 +341,7 @@ def apply_truncation_strategy(x, noise_scale, labels, classifier, guidance_scale
 def apply_amplification_strategy(x, noise_scale, labels, classifier, guidance_scale, reference_values, amplification_sigma_limit=30.0):
     """Stratégie 4: Amplification artificielle."""
     current_sigma = noise_scale[0].item()
-    sigma_max = 784.0
+    sigma_max = 374.0
     
     with torch.enable_grad():
         x = x.detach().requires_grad_(True)

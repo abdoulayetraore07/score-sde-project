@@ -51,6 +51,7 @@ def print_sampling_summary(config, model_name, num_samples, checkpoint_path, new
     logging.info(f"🔧 Corrector: {config.sampling.corrector}")
     logging.info(f"📈 SNR: {config.sampling.snr}")
     logging.info(f"🧹 Denoising: {config.sampling.noise_removal}")
+    logging.info(f" Sigma_max : {config.model.sigma_max}")
     logging.info("="*80)
     logging.info("")
 

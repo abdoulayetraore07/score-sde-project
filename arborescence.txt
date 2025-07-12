@@ -77,24 +77,17 @@
 │   │   ├── image_6.jpg
 │   │   ├── image_7.jpg
 │   │   └── image.jpg
-│   ├── cond_gen_ffhq_1024
-│   │   ├── 69942.png
-│   │   ├── 69944.png
-│   │   ├── 69945.png
-│   │   ├── 69948.png
-│   │   ├── 69971.png
-│   │   ├── 69977.png
-│   │   ├── 69985.png
-│   │   ├── 69988.png
-│   │   ├── 69991.png
-│   │   └── 69994.png
-│   ├── public
-│   │   ├── celebahq_256.jpg
-│   │   ├── church.jpeg
-│   │   ├── ffhq_1024.jpeg
-│   │   ├── ffhq_samples.jpg
-│   │   └── schematic.jpg
-│   └── stats
+│   └── cond_gen_ffhq_1024
+│       ├── 69942.png
+│       ├── 69944.png
+│       ├── 69945.png
+│       ├── 69948.png
+│       ├── 69971.png
+│       ├── 69977.png
+│       ├── 69985.png
+│       ├── 69988.png
+│       ├── 69991.png
+│       └── 69994.png
 ├── classifier_trainer
 │   ├── evaluate_noise_curve_detailed.py
 │   ├── evaluate_noise_levels.py
@@ -108,6 +101,7 @@
 │   │   ├── default_lsun_configs.cpython-310.pyc
 │   │   └── default_lsun_configs.cpython-39.pyc
 │   ├── default_lsun_configs.py
+│   ├── sigma_max_result.txt
 │   └── ve
 │       ├── __pycache__
 │       ├── afhq_512_ncsnpp_continuous.py
@@ -228,38 +222,6 @@
 ├── pretrained_sampling.py
 ├── run_lib.py
 ├── samples
-│   ├── afhq_512
-│   │   ├── colorization
-│   │   ├── controllable
-│   │   ├── general
-│   │   └── inpainting
-│   ├── celebahq_256
-│   │   ├── colorization
-│   │   ├── general
-│   │   └── inpainting
-│   ├── church
-│   │   ├── colorization
-│   │   ├── general
-│   │   └── inpainting
-│   ├── compar_hyperparametres
-│   │   ├── A-S
-│   │   ├── ald
-│   │   ├── corrector_none
-│   │   ├── E-M
-│   │   ├── n_steps=2
-│   │   ├── n_steps=3
-│   │   ├── ODE_sampler
-│   │   ├── params_base
-│   │   ├── predictor_none
-│   │   ├── snr=0.1
-│   │   └── snr=0.2
-│   ├── ffhq_1024
-│   │   ├── colorization
-│   │   ├── general
-│   │   └── inpainting
-│   └── log_likelihoods
-│       ├── likelihood_results_afhq_512_20250704_222252.csv
-│       └── likelihood_results_afhq_512_20250704_224148.csv
 ├── sampling_fast.py
 ├── sampling.py
 ├── sde_lib.py
@@ -270,10 +232,11 @@
 │   │   └── config_modifier.cpython-39.pyc
 │   ├── analyze_checkpoint.py
 │   ├── checkpoint_selector.py
+│   ├── compute_sigma_max.py
 │   ├── config_modifier.py
 │   ├── npz_viewer.py
 │   ├── seed_utils.py
 │   └── test_fid_stats.py
 └── utils.py
 
-68 directories, 209 files
+36 directories, 204 files

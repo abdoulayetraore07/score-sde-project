@@ -145,7 +145,7 @@ def get_config():
     # === MODEL ===
     model = config.model
     model.name = 'ncsnpp'
-    model.sigma_max = 784
+    model.sigma_max = 374
     model.scale_by_sigma = True
     model.num_scales = 2000
     model.ema_rate = 0.9999

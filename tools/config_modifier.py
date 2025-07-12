@@ -21,7 +21,7 @@ def get_config_value(config, path):
             "step_lr": 0.0,
             "noise_removal": True,
             "guidance_scale": 1.0,
-            "guidance_strategy": "truncation",
+            "guidance_strategy": "standard",
             "adaptive_sigma_limit": 50.0
         }
         return getattr(config, path, defaults.get(path, None))
@@ -246,6 +246,7 @@ def print_config_summary(config, model_name, num_samples, checkpoint_path, modif
     print(f"🔧 Corrector: {config.sampling.corrector}")
     print(f"📈 SNR: {config.sampling.snr}")
     print(f"🧹 Denoising: {config.sampling.noise_removal}")
+    print(f" Sigma_max : {config.model.sigma_max}")
     
     # Afficher guidance_scale si disponible
     guidance_scale = get_config_value(config, "guidance_scale")
