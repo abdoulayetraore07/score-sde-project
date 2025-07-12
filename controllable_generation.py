@@ -47,7 +47,6 @@ def range_sigmas_active(labels):
 
   return SIGMA_MAX_CLASSIFIER, SIGMA_LIMIT_PRED_MIN, SIGMA_LIMIT_PRED_MAX 
 
-
 def shared_predictor_update_fn(x, t, sde, model, predictor, probability_flow, continuous):
   """A wrapper that configures and returns the update function of predictors."""
   score_fn = mutils.get_score_fn(sde, model, train=False, continuous=continuous)
@@ -55,7 +54,19 @@ def shared_predictor_update_fn(x, t, sde, model, predictor, probability_flow, co
     # Corrector-only sampler
     predictor_obj = NonePredictor(sde, score_fn, probability_flow)
   else:
-    predictor_obj = predictor(sde, score_fn, probability_flow)
+    # CORRECTION: Support interface unifiée
+    try:
+        # Essayer interface standard sampling.py
+        predictor_obj = predictor(sde, score_fn, probability_flow)
+    except TypeError as e:
+        # Si ça échoue, essayer interface sampling_fast.py avec kwargs
+        predictor_obj = predictor(
+            sde=sde, 
+            score_fn=score_fn, 
+            probability_flow=probability_flow,
+            shape=x.shape,  # Utiliser shape de x
+            eps=1e-3       # valeurs par défaut
+        )
   return predictor_obj.update_fn(x, t)
 
 
@@ -412,17 +423,20 @@ def get_classifier_grad_fn(classifier, guidance_strategy="truncation", guidance_
 
 
 def get_pc_conditional_sampler(sde, classifier, shape, predictor, corrector, inverse_scaler, snr,
-                               n_steps=1, probability_flow=False, continuous=True, 
-                               denoise=True, eps=1e-5, device='cuda', guidance_scale=1.0,
-                               guidance_strategy="truncation", adaptive_sigma_limit=50.0):
-    """Class-conditional sampling with PC samplers and 4 adaptive strategies."""
+                             n_steps=1, probability_flow=False, continuous=True,
+                             denoise=True, eps=1e-5, device='cuda', guidance_scale=1.0, 
+                             guidance_strategy="standard", adaptive_sigma_limit=50.0):
+    """Create a conditional sampler with automatic interface detection."""
     
-    # Charger les valeurs de référence pour la stratégie amplification
+    # Detecter si c'est un predictor de sampling_fast.py
+    predictor_name = getattr(predictor, '__name__', str(predictor))
+    is_fast_predictor = 'adaptive' in predictor_name.lower() or 'fast' in predictor_name.lower()
+    
+    # Construire la fonction de classifier gradient
     reference_values = None
     if guidance_strategy == "amplification":
         reference_values = load_reference_classifier_values(classifier, device)
     
-    # Create classifier gradient function with selected strategy
     classifier_grad_fn = get_classifier_grad_fn(
         classifier, 
         guidance_strategy, 
@@ -432,44 +446,47 @@ def get_pc_conditional_sampler(sde, classifier, shape, predictor, corrector, inv
     )
     
     def conditional_predictor_update_fn(x, t, labels, model):
-        """Predictor step with classifier guidance."""
-        # Create combined score function with closure on labels
+        """Predictor step with automatic interface handling."""
+        # Combined score function
         def combined_score_fn(x_input, t_input):
-            # Get diffusion score
             score_fn = mutils.get_score_fn(sde, model, train=False, continuous=continuous)
             diffusion_score = score_fn(x_input, t_input)
             
-            # Get classifier gradient with selected strategy
             _, current_noise_scale = sde.marginal_prob(x_input, t_input)
             current_classifier_grad = classifier_grad_fn(x_input, current_noise_scale, labels)
             
-            # Combined score
             return diffusion_score + current_classifier_grad
         
-        # Create predictor with combined score
+        # Create predictor with interface detection
         if predictor is None:
             predictor_obj = NonePredictor(sde, combined_score_fn, probability_flow)
         else:
-            predictor_obj = predictor(sde, combined_score_fn, probability_flow)
+            if is_fast_predictor:
+                # Interface sampling_fast.py
+                predictor_obj = predictor(
+                    sde=sde,
+                    score_fn=combined_score_fn,
+                    probability_flow=probability_flow,
+                    shape=x.shape,
+                    eps=eps
+                )
+            else:
+                # Interface sampling.py standard
+                predictor_obj = predictor(sde, combined_score_fn, probability_flow)
         
         return predictor_obj.update_fn(x, t)
     
     def conditional_corrector_update_fn(x, t, labels, model):
-        """Corrector step with classifier guidance."""
-        # Create combined score function with closure on labels
+        """Corrector step - reste inchangé car les correctors sont dans sampling.py."""
         def combined_score_fn(x_input, t_input):
-            # Get diffusion score
             score_fn = mutils.get_score_fn(sde, model, train=False, continuous=continuous)
             diffusion_score = score_fn(x_input, t_input)
             
-            # Get classifier gradient with selected strategy
             _, current_noise_scale = sde.marginal_prob(x_input, t_input)
             current_classifier_grad = classifier_grad_fn(x_input, current_noise_scale, labels)
             
-            # Combined score
             return diffusion_score + current_classifier_grad
         
-        # Create corrector with combined score
         if corrector is None:
             corrector_obj = NoneCorrector(sde, combined_score_fn, snr, n_steps)
         else:
@@ -478,26 +495,28 @@ def get_pc_conditional_sampler(sde, classifier, shape, predictor, corrector, inv
         return corrector_obj.update_fn(x, t)
     
     def pc_conditional_sampler(model, labels):
-        """Generate class-conditional samples with selected strategy."""
+        """Generate conditional samples with automatic method detection."""
         with torch.no_grad():
-            # Initial sample from prior
             x = sde.prior_sampling(shape).to(device)
             
-            # Time steps
-            timesteps = torch.linspace(sde.T, eps, sde.N, device=device)
+            if is_fast_predictor and hasattr(sde, 'N'):
+                # Mode adaptatif potentiel - utiliser timesteps flexibles
+                timesteps = torch.linspace(sde.T, eps, sde.N, device=device)
+            else:
+                # Mode standard
+                timesteps = torch.linspace(sde.T, eps, sde.N, device=device)
             
-            # Sampling loop
+            # Sampling loop standard (marche pour tous les predictors)
             for i in range(sde.N):
                 t = timesteps[i]
                 vec_t = torch.ones(shape[0], device=device) * t
                 
-                # Corrector step with guidance
+                # Corrector step
                 x, x_mean = conditional_corrector_update_fn(x, vec_t, labels, model)
                 
-                # Predictor step with guidance
+                # Predictor step  
                 x, x_mean = conditional_predictor_update_fn(x, vec_t, labels, model)
             
-            # Return final samples
             return inverse_scaler(x_mean if denoise else x)
     
     return pc_conditional_sampler

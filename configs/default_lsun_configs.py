@@ -33,7 +33,7 @@ def get_default_configs():
   sampling.snr = 0.075
 
   # New parameters for the Adaptive step size EM algorithm
-  sampling.adaptive = True
+  sampling.adaptive = False
   sampling.h_init=1e-2
   sampling.abstol = 1e-2
   sampling.reltol = 1e-2
