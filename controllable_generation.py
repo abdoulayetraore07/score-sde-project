@@ -47,6 +47,7 @@ def range_sigmas_active(labels):
 
   return SIGMA_MAX_CLASSIFIER, SIGMA_LIMIT_PRED_MIN, SIGMA_LIMIT_PRED_MAX 
 
+
 def shared_predictor_update_fn(x, t, sde, model, predictor, probability_flow, continuous):
   """A wrapper that configures and returns the update function of predictors."""
   score_fn = mutils.get_score_fn(sde, model, train=False, continuous=continuous)
@@ -54,19 +55,8 @@ def shared_predictor_update_fn(x, t, sde, model, predictor, probability_flow, co
     # Corrector-only sampler
     predictor_obj = NonePredictor(sde, score_fn, probability_flow)
   else:
-    # CORRECTION: Support interface unifiée
-    try:
-        # Essayer interface standard sampling.py
-        predictor_obj = predictor(sde, score_fn, probability_flow)
-    except TypeError as e:
-        # Si ça échoue, essayer interface sampling_fast.py avec kwargs
-        predictor_obj = predictor(
-            sde=sde, 
-            score_fn=score_fn, 
-            probability_flow=probability_flow,
-            shape=x.shape,  # Utiliser shape de x
-            eps=1e-3       # valeurs par défaut
-        )
+    # Interface unifiée - tous les predictors ont la même signature maintenant
+    predictor_obj = predictor(sde, score_fn, shape=x.shape, probability_flow=probability_flow)
   return predictor_obj.update_fn(x, t)
 
 

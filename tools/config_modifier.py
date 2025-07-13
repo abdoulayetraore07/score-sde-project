@@ -42,10 +42,10 @@ def set_config_value(config, path, value):
 def get_overridable_fields():
     """Retourne le mapping complet des paramètres modifiables."""
     return {
-        "sampling_method": "sampling.method",  
-        "adaptive": "sampling.adaptive",   
+        "sampling_method": "sampling.method",   
         "predictor": "sampling.predictor", 
         "corrector": "sampling.corrector",
+        "use_adaptive_timesteps": "sampling.use_adaptive_timesteps",
         "snr": "sampling.snr",
         "denoise": "sampling.noise_removal",
         "n_steps": "sampling.n_steps_each",
@@ -53,8 +53,16 @@ def get_overridable_fields():
         "guidance_scale": "guidance_scale", 
         "guidance_strategy": "guidance_strategy",
         "adaptive_sigma_limit": "adaptive_sigma_limit",
-        "step_lr": "step_lr",
-        "reltol": "sampling.reltol",  
+        "step_lr": "step_lr", 
+        "sampling_h_init": "sampling.sampling_h_init",
+        "sampling_abstol": "sampling.sampling_abstol", 
+        "sampling_reltol": "sampling.sampling_reltol",
+        "error_use_prev": "sampling.error_use_prev",
+        "norm": "sampling.norm",
+        "sampling_safety": "sampling.sampling_safety",
+        "extrapolation": "sampling.extrapolation",
+        "sde_improved_euler": "sampling.sde_improved_euler",
+        "sampling_exp": "sampling.sampling_exp"
     }
 
 

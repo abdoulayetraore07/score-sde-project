@@ -32,17 +32,16 @@ def get_default_configs():
   sampling.probability_flow = False
   sampling.snr = 0.075
 
-  # New parameters for the Adaptive step size EM algorithm
-  sampling.adaptive = False
-  sampling.h_init=1e-2
-  sampling.abstol = 1e-2
-  sampling.reltol = 1e-2
-  sampling.error_use_prev=True
+  # NOUVEAUX: Fast sampling parameters
+  sampling.sampling_h_init = 1e-2
+  sampling.sampling_abstol = 0.0039  
+  sampling.sampling_reltol = 1e-2
+  sampling.error_use_prev = True
   sampling.norm = "L2_scaled"
-  sampling.safety = 0.9
+  sampling.sampling_safety = 0.9
   sampling.extrapolation = True
   sampling.sde_improved_euler = True
-  sampling.exp = 0.9
+  sampling.sampling_exp = 0.9
 
   # evaluation
   config.eval = evaluate = ml_collections.ConfigDict()
