@@ -40,9 +40,7 @@ from tools.checkpoint_selector import select_afhq_checkpoint, copy_checkpoint_to
 
 # ✅ IMPORT DU MODULE EXTERNE
 from tools.config_modifier import interactive_config_modification, print_config_summary
-from tools.seed_utils import set_seeds_for_sampling, apply_seed_before_generation, log_seed_info, set_global_seed_policy
-# Activer les seeds fixes
-set_global_seed_policy(True)
+from tools.seed_utils import configure_batch_seeds, apply_batch_seeds, log_seed_strategy
 
 def range_sigmas_active(labels):
    
@@ -356,10 +354,13 @@ def load_test_image(model_name, image_id):
     return image_path
 
 
-
-def test_inpainting(model_name, image_id, mask_type, mask_percentage, num_samples, mask_shape='random', interactive=True):
+def test_inpainting(model_name, image_id, mask_type, mask_percentage, num_samples, mask_shape='random', interactive=True, seed_mode='random'):
     """Test de l'inpainting."""
     logging.info("🎨 Test d'inpainting...")
+    
+    # Configuration des seeds
+    batch_seed, seeds_info = configure_batch_seeds(num_samples, seed_mode)
+    log_seed_strategy(seed_mode, num_samples)
     
     # Charger le modèle avec sélection
     config, score_model, ema, state = load_model(model_name, interactive=interactive)
@@ -420,6 +421,9 @@ def test_inpainting(model_name, image_id, mask_type, mask_percentage, num_sample
     ema.store(score_model.parameters())
     ema.copy_to(score_model.parameters())
     
+    # Application des seeds avant génération
+    apply_batch_seeds(batch_seed, seeds_info)
+    
     # Générer les échantillons
     results = []
     
@@ -474,9 +478,13 @@ def test_inpainting(model_name, image_id, mask_type, mask_percentage, num_sample
 
 
 
-def test_colorization(model_name, image_id, num_samples, interactive=True):
+def test_colorization(model_name, image_id, num_samples, interactive=True, seed_mode='random'):
     """Test de la colorization."""
     logging.info("🌈 Test de colorization...")
+    
+    # Configuration des seeds
+    batch_seed, seeds_info = configure_batch_seeds(num_samples, seed_mode)
+    log_seed_strategy(seed_mode, num_samples)
     
     # Charger le modèle avec sélection
     config, score_model, ema, state = load_model(model_name, interactive=interactive)
@@ -522,6 +530,9 @@ def test_colorization(model_name, image_id, num_samples, interactive=True):
     # Utiliser EMA
     ema.store(score_model.parameters())
     ema.copy_to(score_model.parameters())
+    
+    # Application des seeds avant génération
+    apply_batch_seeds(batch_seed, seeds_info)
     
     # Générer les échantillons
     results = []
@@ -574,8 +585,7 @@ def test_colorization(model_name, image_id, num_samples, interactive=True):
     logging.info(f"✅ Résultats sauvegardés: {grid_path}")
 
 
-
-def test_controllable(model_name, image_id, class_name, num_samples, guidance_scale=1.0, interactive=True):
+def test_controllable(model_name, image_id, class_name, num_samples, guidance_scale=500.0, interactive=True, seed_mode='random'):
     """Test de la génération conditionnelle par classe (AFHQ seulement)."""
     
     if model_name != 'afhq_512':
@@ -583,6 +593,10 @@ def test_controllable(model_name, image_id, class_name, num_samples, guidance_sc
         return
     
     logging.info(f"🎯 Test de génération conditionnelle - Classe: {class_name}")
+    
+    # Configuration des seeds
+    batch_seed, seeds_info = configure_batch_seeds(num_samples, seed_mode)
+    log_seed_strategy(seed_mode, num_samples)
     
     # Classes AFHQ
     class_mapping = {'cat': 0, 'dog': 1, 'wild': 2}
@@ -613,11 +627,9 @@ def test_controllable(model_name, image_id, class_name, num_samples, guidance_sc
 
     # Récupérer les paramètres de stratégie depuis la config
     guidance_strategy = getattr(config, 'guidance_strategy', 'truncation')
-    adaptive_sigma_limit = getattr(config, 'adaptive_sigma_limit', 50.0)
+    adaptive_sigma_limit = getattr(config, 'adaptive_sigma_limit', 0.01)
     
     logging.info(f"🚀 Stratégie de guidance: {guidance_strategy}")
-    if guidance_strategy == "adaptive_scale":
-        logging.info(f"📏 Limite sigma adaptative: {adaptive_sigma_limit}")
 
     # Setup conditional sampler avec stratégie
     conditional_sampler = get_pc_conditional_sampler(
@@ -643,54 +655,17 @@ def test_controllable(model_name, image_id, class_name, num_samples, guidance_sc
     ema.store(score_model.parameters())
     ema.copy_to(score_model.parameters())
     
-    # Configurer les seeds
-    seeds_used = set_seeds_for_sampling(num_samples)
-    log_seed_info(num_samples, seeds_used)
+    # Application des seeds avant génération
+    apply_batch_seeds(batch_seed, seeds_info)
 
     logging.info(f"🔄 Génération de {num_samples} échantillons de classe '{class_name}'...")
 
     # Labels pour toutes les images (même classe)
     labels = torch.full((num_samples,), class_idx, dtype=torch.long, device=config.device)
 
-    # MODIFICATION: Génération image par image avec seeds fixes
-    if seeds_used is not None:
-        # Génération avec seeds fixes
-        samples_list = []
-        for i in range(num_samples):
-            used_seed = apply_seed_before_generation(i, seeds_used)
-            single_label = labels[i:i+1]  # Un seul label
-            
-            # Sampler pour une seule image
-            single_sampler = get_pc_conditional_sampler(
-                sde=sde,
-                classifier=classifier,
-                shape=(1, config.data.num_channels, config.data.image_size, config.data.image_size),
-                predictor=sampling.get_predictor(config.sampling.predictor.lower()),
-                corrector=sampling.get_corrector(config.sampling.corrector.lower()),
-                inverse_scaler=inverse_scaler,
-                snr=config.sampling.snr,
-                n_steps=config.sampling.n_steps_each,
-                probability_flow=config.sampling.probability_flow,
-                continuous=config.training.continuous,
-                denoise=config.sampling.noise_removal,
-                eps=sampling_eps,
-                device=config.device,
-                guidance_scale=guidance_scale,
-                guidance_strategy=guidance_strategy,
-                adaptive_sigma_limit=adaptive_sigma_limit
-            )
-            
-            single_sample = single_sampler(score_model, single_label)
-            samples_list.append(single_sample)
-        
-        # Concaténer tous les samples
-        samples = torch.cat(samples_list, dim=0)
-    else:
-        # Génération normale (batch complet)
-        samples = conditional_sampler(score_model, labels)
-
-    SIGMA_MAX_CLASSIFIER, SIGMA_LIMIT_PRED_MIN, SIGMA_LIMIT_PRED_MAX = range_sigmas_active(labels)
-    
+    # Génération batch complète
+    samples = conditional_sampler(score_model, labels)
+ 
     ema.restore(score_model.parameters())
     
     # Sauvegarder
@@ -702,7 +677,7 @@ def test_controllable(model_name, image_id, class_name, num_samples, guidance_sc
     grid = make_grid(samples, nrow=int(np.sqrt(num_samples)), padding=2, normalize=True)
     
     # Nom de fichier avec info stratégie
-    guidance_str = f"_guidance{guidance_scale:.1f}" if guidance_scale != 1.0 else ""
+    guidance_str = f"_guidance{guidance_scale:.1f}" if guidance_scale != 500.0 else ""
     strategy_str = f"_{guidance_strategy}"
     if guidance_strategy == "adaptive_scale":
         strategy_str += f"_limit{adaptive_sigma_limit:.0f}"
@@ -734,22 +709,22 @@ def test_controllable(model_name, image_id, class_name, num_samples, guidance_sc
 
 
 
-#Inpaiting, colorization et controllable
+#General, Inpaiting, Colorization et Controllable
 """
-python pretrained_controllable_gen.py church inpainting --mask-type light --mask-shape square --mask-percentage 20.0 --image-id 1 ; python pretrained_controllable_gen.py church inpainting --mask-type light --mask-shape rectangle --mask-percentage 80.0 --image-id 5 ;python pretrained_controllable_gen.py church colorization  --image-id 3; python pretrained_controllable_gen.py church colorization --image-id 10 ;sample=16;
+python pretrained_sampling.py church 32 ;python pretrained_controllable_gen.py church inpainting --mask-type light --mask-shape square --mask-percentage 20.0 --image-id 1 ; python pretrained_controllable_gen.py church inpainting --mask-type light --mask-shape rectangle --mask-percentage 80.0 --image-id 5 ;python pretrained_controllable_gen.py church colorization  --image-id 3; python pretrained_controllable_gen.py church colorization --image-id 10 ;sample=16;
 python pretrained_controllable_gen.py afhq_512 controllable --class wild --num-samples $sample --guidance-scale 1.0
 
 
-python pretrained_controllable_gen.py celebahq_256 inpainting --mask-type light --mask-shape circle --mask-percentage 20.0 --image-id  6; python pretrained_controllable_gen.py celebahq_256 inpainting --mask-type light --mask-shape random_patches --mask-percentage 80.0 --image-id 10 ;python pretrained_controllable_gen.py celebahq_256 colorization --image-id  3; python pretrained_controllable_gen.py celebahq_256 colorization  --image-id 5;sample=16;
+python pretrained_sampling.py celebahq_256 32; python pretrained_controllable_gen.py celebahq_256 inpainting --mask-type light --mask-shape circle --mask-percentage 20.0 --image-id  6; python pretrained_controllable_gen.py celebahq_256 inpainting --mask-type light --mask-shape random_patches --mask-percentage 80.0 --image-id 10 ;python pretrained_controllable_gen.py celebahq_256 colorization --image-id  3; python pretrained_controllable_gen.py celebahq_256 colorization  --image-id 5;sample=16;
 python pretrained_controllable_gen.py afhq_512 controllable --class cat --num-samples $sample --guidance-scale 1.0
 
 
-python pretrained_controllable_gen.py ffhq_1024 inpainting --mask-type light --mask-shape random_patches --mask-percentage 20.0 --image-id 7; python pretrained_controllable_gen.py ffhq_1024 inpainting --mask-type light --mask-shape eight --mask-percentage 80.0 --image-id 3 ;python pretrained_controllable_gen.py ffhq_1024 colorization  --image-id 10; python pretrained_controllable_gen.py ffhq_1024 colorization  --image-id 9;sample=16;
+python pretrained_sampling.py ffhq_1024 32; python pretrained_controllable_gen.py ffhq_1024 inpainting --mask-type light --mask-shape random_patches --mask-percentage 20.0 --image-id 7; python pretrained_controllable_gen.py ffhq_1024 inpainting --mask-type light --mask-shape eight --mask-percentage 80.0 --image-id 3 ;python pretrained_controllable_gen.py ffhq_1024 colorization  --image-id 10; python pretrained_controllable_gen.py ffhq_1024 colorization  --image-id 9;sample=16;
 python pretrained_controllable_gen.py afhq_512 controllable --class dog --num-samples $sample --guidance-scale 1.0;
 
 
-python pretrained_sampling.py afhq_512 25; python pretrained_controllable_gen.py afhq_512 inpainting --mask-type light --mask-shape triangle --mask-percentage 20.0 --image-id 26; python pretrained_controllable_gen.py afhq_512 inpainting --mask-type light --mask-shape eight --mask-percentage 80.0 --image-id 6 ;python pretrained_controllable_gen.py afhq_512 colorization  --image-id 9; python pretrained_controllable_gen.py afhq_512 colorization  --image-id 3
-
+python pretrained_sampling.py afhq_512 32; python pretrained_controllable_gen.py afhq_512 inpainting --mask-type light --mask-shape triangle --mask-percentage 20.0 --image-id 26; python pretrained_controllable_gen.py afhq_512 inpainting --mask-type light --mask-shape eight --mask-percentage 80.0 --image-id 6 ;python pretrained_controllable_gen.py afhq_512 colorization  --image-id 9; python pretrained_controllable_gen.py afhq_512 colorization  --image-id 3;
+python pretrained_sampling.py afhq_512 32; python pretrained_controllable_gen.py afhq_512 controllable --num-samples 25 --class dog ;  python pretrained_controllable_gen.py afhq_512 controllable --num-samples 25 --class cat ;  python pretrained_controllable_gen.py afhq_512 controllable --num-samples 25 --class wild
 """
 
 
@@ -771,12 +746,30 @@ def main():
                        help='Nombre d\'échantillons à générer (défaut: 4)')
     parser.add_argument('--class', dest='class_name', choices=['cat', 'dog', 'wild'], 
                        help='Classe pour génération conditionnelle (AFHQ seulement)')
-    parser.add_argument('--guidance-scale', type=float, default=1.0,
-                       help='Guidance scaling factor (défaut: 1.0)')
+    parser.add_argument('--guidance-scale', type=float, default=500.0,
+                       help='Guidance scaling factor (défaut: 500.0)')
     parser.add_argument('--auto', action='store_true',
                        help='Mode automatique (pas de sélection interactive pour AFHQ)')
+    parser.add_argument('--fixed-seeds', action='store_true', 
+                       help='Utiliser des seeds fixes (reproductible)')
+    parser.add_argument('--random-seeds', action='store_true',
+                       help='Utiliser des seeds aléatoires - DÉFAUT')
+    parser.add_argument('--seeds', type=str,
+                       help='Seeds personnalisés séparés par des virgules (ex: 42,123,456)')
     
     args = parser.parse_args()
+    
+    # Déterminer la stratégie de seeds (aléatoire par défaut)
+    if args.fixed_seeds:
+        seed_mode = 'fixed'
+    elif args.seeds:
+        try:
+            seed_mode = [int(s.strip()) for s in args.seeds.split(',')]
+        except ValueError:
+            logging.error("❌ Format seeds invalide. Utilisez: --seeds 42,123,456")
+            return 1
+    else:
+        seed_mode = 'random'  # Défaut
     
     # Mode interactif ou automatique
     interactive = not args.auto
@@ -805,6 +798,15 @@ def main():
     else:
         logging.info(f"Image: #{args.image_id}")
     logging.info(f"Échantillons: {args.num_samples}")
+    
+    # Affichage des seeds
+    if seed_mode == 'random':
+        logging.info("Seeds: ALÉATOIRES")
+    elif seed_mode == 'fixed':
+        logging.info("Seeds: FIXES (reproductible)")
+    elif isinstance(seed_mode, list):
+        logging.info(f"Seeds: PERSONNALISÉS {seed_mode}")
+        
     if args.task == 'inpainting':
         logging.info(f"Type masque: {args.mask_type}")
         logging.info(f"Forme masque: {args.mask_shape}")
@@ -817,11 +819,11 @@ def main():
     try:
         if args.task == 'inpainting':
             test_inpainting(args.model, args.image_id, args.mask_type, 
-                          args.mask_percentage, args.num_samples, args.mask_shape, interactive)
+                          args.mask_percentage, args.num_samples, args.mask_shape, interactive, seed_mode)
         elif args.task == 'colorization':
-            test_colorization(args.model, args.image_id, args.num_samples, interactive)
+            test_colorization(args.model, args.image_id, args.num_samples, interactive, seed_mode)
         elif args.task == 'controllable':  
-            test_controllable(args.model, args.image_id, args.class_name, args.num_samples, args.guidance_scale, interactive)
+            test_controllable(args.model, args.image_id, args.class_name, args.num_samples, args.guidance_scale, interactive, seed_mode)
             
     except Exception as e:
         logging.error(f"❌ Erreur: {e}")

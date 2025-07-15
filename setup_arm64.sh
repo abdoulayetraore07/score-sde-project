@@ -108,14 +108,14 @@ echo "📦 ÉTAPE 4: Téléchargement et installation checkpoints..."
 mkdir -p experiments/{church,celebahq_256,ffhq_1024,afhq_512}_ncsnpp_continuous/{checkpoints,checkpoints-meta}
 
 ## 4.2 Church checkpoint
-#echo "  → Church checkpoint..."
-#gdown --folder "https://drive.google.com/drive/folders/1zVChA0HrnJU66Jkt4P6KOnlREhBMc4Yh" --quiet 2>/dev/null || echo "    ⚠️ Church échoué"
-#if [ -d "church_ncsnpp_continuous" ]; then
-#    find church_ncsnpp_continuous -name "*.pth" -exec cp {} experiments/church_ncsnpp_continuous/checkpoints-meta/checkpoint.pth \; 2>/dev/null || true
-#    find church_ncsnpp_continuous -name "*.pth" -exec cp {} experiments/church_ncsnpp_continuous/checkpoints/ \; 2>/dev/null || true
-#    rm -rf church_ncsnpp_continuous/
-#    echo "    ✅ Church installé"
-#fi
+echo "  → Church checkpoint..."
+gdown --folder "https://drive.google.com/drive/folders/1zVChA0HrnJU66Jkt4P6KOnlREhBMc4Yh" --quiet 2>/dev/null || echo "    ⚠️ Church échoué"
+if [ -d "church_ncsnpp_continuous" ]; then
+    find church_ncsnpp_continuous -name "*.pth" -exec cp {} experiments/church_ncsnpp_continuous/checkpoints-meta/checkpoint.pth \; 2>/dev/null || true
+    find church_ncsnpp_continuous -name "*.pth" -exec cp {} experiments/church_ncsnpp_continuous/checkpoints/ \; 2>/dev/null || true
+    rm -rf church_ncsnpp_continuous/
+    echo "    ✅ Church installé"
+fi
 
 
 # 4.3 AFHQ checkpoints (TOUS les checkpoints)
@@ -153,20 +153,20 @@ if [ -d "afhq_512_ncsnpp_continuous" ]; then
 fi
 
 # 4.4 FFHQ_1024 et Celeab_256 checkpoints
-#echo "  → FFHQ_1024 et Celeba_256 checkpoints..."
-#for model in "celebahq_256_ncsnpp_continuous:19VJ7UZTE-ytGX6z5rl-tumW9c0Ps3itk" "ffhq_1024_ncsnpp_continuous:1ZqLNr_kH0o9DxvwSlrQPMmkrhEnXhBm2"; do
-#    name=$(echo $model | cut -d: -f1)
-#    id=$(echo $model | cut -d: -f2)
+echo "  → FFHQ_1024 et Celeba_256 checkpoints..."
+for model in "celebahq_256_ncsnpp_continuous:19VJ7UZTE-ytGX6z5rl-tumW9c0Ps3itk" "ffhq_1024_ncsnpp_continuous:1ZqLNr_kH0o9DxvwSlrQPMmkrhEnXhBm2"; do
+    name=$(echo $model | cut -d: -f1)
+    id=$(echo $model | cut -d: -f2)
     
-#    gdown --folder "https://drive.google.com/drive/folders/$id" --quiet 2>/dev/null || continue
+    gdown --folder "https://drive.google.com/drive/folders/$id" --quiet 2>/dev/null || continue
     
-#    if [ -d "$name" ]; then
-#        find "$name" -name "*.pth" -exec cp {} "experiments/$name/checkpoints-meta/checkpoint.pth" \; 2>/dev/null || true
-#        find "$name" -name "*.pth" -exec cp {} "experiments/$name/checkpoints/" \; 2>/dev/null || true
-#        rm -rf "$name/"
-#        echo "    ✅ $name installé"
-#    fi
-#done
+    if [ -d "$name" ]; then
+        find "$name" -name "*.pth" -exec cp {} "experiments/$name/checkpoints-meta/checkpoint.pth" \; 2>/dev/null || true
+        find "$name" -name "*.pth" -exec cp {} "experiments/$name/checkpoints/" \; 2>/dev/null || true
+        rm -rf "$name/"
+        echo "    ✅ $name installé"
+    fi
+done
 
 
 # 4.5 AFHQ classifier checkpoint
@@ -176,11 +176,7 @@ if [ -d "afhq_classifier" ]; then
 
     if [ -f "afhq_classifier/afhq_classifier.pth" ]; then
         cp afhq_classifier/afhq_classifier.pth experiments/afhq_classifier/afhq_classifier.pth
-        echo "    ✅ AFHQ classifier 1 installé"
-    fi
-    if [ -f "afhq_classifier/afhq_classifier_2.pth" ]; then
-        cp afhq_classifier/afhq_classifier_2.pth experiments/afhq_classifier/afhq_classifier_2.pth
-        echo "    ✅ AFHQ classifier 2 installé"
+        echo "    ✅ AFHQ classifier installé"
     fi
     rm -rf afhq_classifier/
 fi

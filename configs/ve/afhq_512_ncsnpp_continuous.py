@@ -114,9 +114,6 @@ def get_config():
     
     # === SAMPLING ===
     sampling = config.sampling
-    sampling.method = 'pc'
-    sampling.predictor = 'reverse_diffusion'
-    sampling.corrector = 'langevin'
     sampling.snr = 0.16
     
     # === DATA ===
@@ -174,7 +171,7 @@ def get_config():
     # Configuration par défaut des stratégies
     config.guidance_strategy = "standard"  # standard, adaptive_scale, truncation, amplification
     config.guidance_scale = 1.0  # Échelle de guidance de base
-    config.adaptive_sigma_limit = 50.0  # Limite sigma pour stratégie adaptive_scale
+    config.adaptive_sigma_limit = 20.0  # Limite sigma pour stratégie adaptive_scale
     
     # === DEVICE AUTO ===
     # Utilise tous les GPUs disponibles ou CPU

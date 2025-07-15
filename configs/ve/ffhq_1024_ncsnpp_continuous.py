@@ -27,9 +27,6 @@ def get_config():
 
   # sampling
   config.sampling = sampling = ml_collections.ConfigDict()
-  sampling.method = 'pc'
-  sampling.predictor = 'reverse_diffusion'
-  sampling.corrector = 'langevin'
   sampling.probability_flow = False
   sampling.snr = 0.15
   sampling.n_steps_each = 1

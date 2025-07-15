@@ -17,10 +17,11 @@ import torch.nn.functional as F
 from PIL import Image
 import os
 import logging
+import random
 
 #Keep the import below for registering all model definitions
 from models import ddpm, ncsnv2, ncsnpp
-from .pc_sampler import (
+from sampling import (
     ReverseDiffusionPredictor, 
     LangevinCorrector, 
     EulerMaruyamaPredictor,
@@ -32,32 +33,24 @@ from .pc_sampler import (
 
 def range_sigmas_active(labels):
    
-  if labels[0].item()== 2 : # Wild
+  if labels[0].item()== 2 :        # Wild
     SIGMA_LIMIT_PRED_MIN = 0.01  
-    SIGMA_LIMIT_PRED_MAX = 100   
-    SIGMA_MAX_CLASSIFIER = 50.   
-  elif labels[0].item()== 1 : # Dog
+    SIGMA_LIMIT_PRED_MAX = 374   #100       
+    SIGMA_MAX_CLASSIFIER = 50   #50
+  elif labels[0].item()== 1 :    #Dog
     SIGMA_LIMIT_PRED_MIN = 0.01  
-    SIGMA_LIMIT_PRED_MAX = 40  
-    SIGMA_MAX_CLASSIFIER = 20 
-  elif labels[0].item()== 0 :  #Cat
+    SIGMA_LIMIT_PRED_MAX = 374   #40     
+    SIGMA_MAX_CLASSIFIER = 50   #50
+  elif labels[0].item()== 0 :    #Cat
     SIGMA_LIMIT_PRED_MIN = 0.01
-    SIGMA_LIMIT_PRED_MAX = 100
-    SIGMA_MAX_CLASSIFIER = 50
+    SIGMA_LIMIT_PRED_MAX = 374   #100     
+    SIGMA_MAX_CLASSIFIER = 50   #50
 
   return SIGMA_MAX_CLASSIFIER, SIGMA_LIMIT_PRED_MIN, SIGMA_LIMIT_PRED_MAX 
 
 
-def shared_predictor_update_fn(x, t, sde, model, predictor, probability_flow, continuous):
-  """A wrapper that configures and returns the update function of predictors."""
-  score_fn = mutils.get_score_fn(sde, model, train=False, continuous=continuous)
-  if predictor is None:
-    # Corrector-only sampler
-    predictor_obj = NonePredictor(sde, score_fn, probability_flow)
-  else:
-    # Interface unifiée - tous les predictors ont la même signature maintenant
-    predictor_obj = predictor(sde, score_fn, shape=x.shape, probability_flow=probability_flow)
-  return predictor_obj.update_fn(x, t)
+# ✅ SUPPRESSION de la fonction shared_predictor_update_fn dupliquée
+# (On utilise celle de sampling.py qui est complète)
 
 
 def shared_corrector_update_fn(x, t, sde, model, corrector, continuous, snr, n_steps):
@@ -92,13 +85,19 @@ def get_pc_inpainter(sde, predictor, corrector, inverse_scaler, snr,
     A inpainting function.
   """
 
+  # ✅ UTILISATION de la fonction shared_predictor_update_fn de sampling.py
+  from sampling import shared_predictor_update_fn
+  
   predictor_update_fn = functools.partial(shared_predictor_update_fn,
                                            sde=sde,
+                                           shape=None,  # Sera défini dans pc_inpainter
+                                           model=None,  # Will be passed in sampler
                                            predictor=predictor,
                                            probability_flow=probability_flow,
                                            continuous=continuous)
   corrector_update_fn = functools.partial(shared_corrector_update_fn,
                                            sde=sde,
+                                           model=None,  # Will be passed in sampler
                                            corrector=corrector,
                                            continuous=continuous,
                                            snr=snr,
@@ -162,13 +161,19 @@ def get_pc_colorizer(sde, predictor, corrector, inverse_scaler, snr,
     A colorization function.
   """
 
+  # ✅ UTILISATION de la fonction shared_predictor_update_fn de sampling.py
+  from sampling import shared_predictor_update_fn
+  
   predictor_update_fn = functools.partial(shared_predictor_update_fn,
                                            sde=sde,
+                                           shape=None,  # Sera défini dans pc_colorizer
+                                           model=None,  # Will be passed in sampler
                                            predictor=predictor,
                                            probability_flow=probability_flow,
                                            continuous=continuous)
   corrector_update_fn = functools.partial(shared_corrector_update_fn,
                                            sde=sde,
+                                           model=None,  # Will be passed in sampler
                                            corrector=corrector,
                                            continuous=continuous,
                                            snr=snr,
@@ -222,68 +227,6 @@ def get_pc_colorizer(sde, predictor, corrector, inverse_scaler, snr,
   return pc_colorizer
 
 
-def load_reference_classifier_values(classifier, device='cuda', reference_sigma=30.0):
-    """Charge les images de référence et calcule les valeurs du classifier.
-    
-    Args:
-        classifier: Le classifier AFHQ entraîné
-        device: Device à utiliser
-        reference_sigma: Valeur de sigma pour la référence
-        
-    Returns:
-        dict: Valeurs de référence pour chaque classe
-    """
-    reference_dir = "assets/cond_gen_afhq_512"
-    reference_values = {}
-    
-    class_mapping = {'cat': 0, 'dog': 1, 'wild': 2}
-    
-    if not os.path.exists(reference_dir):
-        logging.warning(f"⚠️ Dossier de référence {reference_dir} non trouvé")
-        # Valeurs par défaut si pas d'images de référence
-        return {0: 1.0, 1: 1.0, 2: 1.0}
-    
-    for class_name, class_idx in class_mapping.items():
-        # Chercher l'image de référence
-        image_path = None
-        for ext in ['.jpg', '.jpeg', '.png']:
-            candidate_path = os.path.join(reference_dir, f"{class_name}{ext}")
-            if os.path.exists(candidate_path):
-                image_path = candidate_path
-                break
-        
-        if image_path is None:
-            logging.warning(f"⚠️ Image de référence pour {class_name} non trouvée")
-            reference_values[class_idx] = 1.0
-            continue
-        
-        try:
-            # Charger et préprocesser l'image
-            from torchvision import transforms
-            transform = transforms.Compose([
-                transforms.Resize((512, 512)),
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-            ])
-            
-            image = Image.open(image_path).convert('RGB')
-            image_tensor = transform(image).unsqueeze(0).to(device)
-            
-            # Calculer la valeur de référence
-            with torch.no_grad():
-                sigma_tensor = torch.full((1,), reference_sigma, device=device)
-                logits = classifier(image_tensor, sigma_tensor)
-                log_probs = F.log_softmax(logits, dim=1)
-                reference_values[class_idx] = log_probs[0, class_idx].item()
-                
-            logging.info(f"✅ Référence {class_name}: {reference_values[class_idx]:.4f}")
-            
-        except Exception as e:
-            logging.warning(f"⚠️ Erreur chargement référence {class_name}: {e}")
-            reference_values[class_idx] = 1.0
-    
-    return reference_values
-
 
 def apply_standard_strategy(classifier_grad, guidance_scale):
     """Stratégie 1: Standard baseline."""
@@ -293,23 +236,22 @@ def apply_standard_strategy(classifier_grad, guidance_scale):
 def apply_adaptive_scale_strategy(classifier_grad, current_sigma, guidance_scale, adaptive_sigma_limit):
     """Stratégie 2: Adaptive scale linear variation."""
     sigma_max = 374.0
+
+    adaptive_sigma_limit = 0.01
+    # Zone adaptative: 500.0 à 400.0 linéairement
+    a, b = 400.0, 500.0
+    alpha = (sigma_max - current_sigma) / (sigma_max - adaptive_sigma_limit)
+    adaptive_scale = a + (b - a) * alpha
     
-    if current_sigma >= adaptive_sigma_limit:
-        # Zone adaptative: 0.01 à 1.0 linéairement
-        a, b = 0.01, 1.0
-        alpha = (sigma_max - current_sigma) / (sigma_max - adaptive_sigma_limit)
-        adaptive_scale = a + (b - a) * alpha
-    else:
-        # Zone constante: 1.0
-        adaptive_scale = 1.0
-    
-    return classifier_grad * adaptive_scale
+    return classifier_grad * adaptive_scale 
 
 
 def apply_truncation_strategy(x, noise_scale, labels, classifier, guidance_scale):
     """Stratégie 3: Truncation (méthode existante)."""
+    
     current_sigma = noise_scale[0].item()
     SIGMA_MAX_CLASSIFIER, SIGMA_LIMIT_PRED_MIN, SIGMA_LIMIT_PRED_MAX = range_sigmas_active(labels)
+   
     
     if current_sigma < SIGMA_LIMIT_PRED_MIN or current_sigma > SIGMA_LIMIT_PRED_MAX:
         # En dehors de la zone : pas de guidance
@@ -325,47 +267,14 @@ def apply_truncation_strategy(x, noise_scale, labels, classifier, guidance_scale
         loss = target_log_probs.sum()
         grad = torch.autograd.grad(loss, x, retain_graph=False)[0]
     
+    if random.random() < 0.01 :
+       print(f"Troncature from {SIGMA_LIMIT_PRED_MIN} to {SIGMA_LIMIT_PRED_MAX} with classifier_max  = {SIGMA_MAX_CLASSIFIER}")
+       print(f"Guidance_scale : {guidance_scale}")
+       
     return grad.detach() * guidance_scale
 
 
-def apply_amplification_strategy(x, noise_scale, labels, classifier, guidance_scale, reference_values, amplification_sigma_limit=30.0):
-    """Stratégie 4: Amplification artificielle."""
-    current_sigma = noise_scale[0].item()
-    sigma_max = 374.0
-    
-    with torch.enable_grad():
-        x = x.detach().requires_grad_(True)
-        
-        if current_sigma >= amplification_sigma_limit:
-            # Zone artificielle: interpolation vers référence
-            alpha = (sigma_max - current_sigma) / (sigma_max - amplification_sigma_limit)
-            
-            # Valeur uniforme (équiprobable)
-            uniform_log_prob = np.log(1.0 / 3.0)
-            
-            # Valeur de référence pour cette classe
-            target_class = labels[0].item()
-            target_log_prob = reference_values.get(target_class, uniform_log_prob)
-            
-            # Interpolation linéaire
-            artificial_log_prob = (1 - alpha) * uniform_log_prob + alpha * target_log_prob
-            
-            # Créer un gradient artificiel vers cette valeur
-            artificial_loss = artificial_log_prob * labels.shape[0]
-            grad = torch.autograd.grad(artificial_loss, x, create_graph=False, retain_graph=False)[0]
-            
-        else:
-            # Zone normale: utiliser le classifier réel
-            logits = classifier(x, noise_scale)
-            log_probs = F.log_softmax(logits, dim=1)
-            target_log_probs = log_probs.gather(1, labels.view(-1, 1).long()).squeeze(1)
-            loss = target_log_probs.sum()
-            grad = torch.autograd.grad(loss, x, retain_graph=False)[0]
-    
-    return grad.detach() * guidance_scale
-
-
-def get_classifier_grad_fn(classifier, guidance_strategy="truncation", guidance_scale=1.0, adaptive_sigma_limit=50.0, reference_values=None):
+def get_classifier_grad_fn(classifier, guidance_strategy="truncation", guidance_scale=500.0, adaptive_sigma_limit=20.0, reference_values=None):
     """Create gradient function for noise-dependent classifier with 4 strategies."""
     
     def classifier_grad_fn(x, noise_scale, labels):
@@ -397,15 +306,7 @@ def get_classifier_grad_fn(classifier, guidance_strategy="truncation", guidance_
         elif guidance_strategy == "truncation":
             # Stratégie 3: Truncation 
             return apply_truncation_strategy(x, noise_scale, labels, classifier, guidance_scale)
-            
-        elif guidance_strategy == "amplification":
-            # Stratégie 4: Amplification
-            if reference_values is None:
-                # Fallback vers standard si pas de référence
-                logging.warning("⚠️ Pas de valeurs de référence, fallback vers standard")
-                return get_classifier_grad_fn(classifier, "standard", guidance_scale, adaptive_sigma_limit)(x, noise_scale, labels)
-            return apply_amplification_strategy(x, noise_scale, labels, classifier, guidance_scale, reference_values)
-            
+                
         else:
             raise ValueError(f"Stratégie inconnue: {guidance_strategy}")
     
@@ -414,18 +315,12 @@ def get_classifier_grad_fn(classifier, guidance_strategy="truncation", guidance_
 
 def get_pc_conditional_sampler(sde, classifier, shape, predictor, corrector, inverse_scaler, snr,
                              n_steps=1, probability_flow=False, continuous=True,
-                             denoise=True, eps=1e-5, device='cuda', guidance_scale=1.0, 
-                             guidance_strategy="standard", adaptive_sigma_limit=50.0):
+                             denoise=True, eps=1e-5, device='cuda', guidance_scale=500.0, 
+                             guidance_strategy="standard", adaptive_sigma_limit=20.0):
     """Create a conditional sampler with automatic interface detection."""
-    
-    # Detecter si c'est un predictor de sampling_fast.py
-    predictor_name = getattr(predictor, '__name__', str(predictor))
-    is_fast_predictor = 'adaptive' in predictor_name.lower() or 'fast' in predictor_name.lower()
-    
+     
     # Construire la fonction de classifier gradient
     reference_values = None
-    if guidance_strategy == "amplification":
-        reference_values = load_reference_classifier_values(classifier, device)
     
     classifier_grad_fn = get_classifier_grad_fn(
         classifier, 
@@ -435,7 +330,13 @@ def get_pc_conditional_sampler(sde, classifier, shape, predictor, corrector, inv
         reference_values
     )
     
-    def conditional_predictor_update_fn(x, t, labels, model):
+    # DÉTECTION du type de predictor
+    is_adaptive = predictor is not None and hasattr(predictor, '__name__') and predictor.__name__ == 'AdaptivePredictor'
+    
+    if is_adaptive:
+        logging.info("🔄 Détection d'AdaptivePredictor - utilisation de la logique adaptative")
+    
+    def conditional_predictor_update_fn(x, t, labels, model, h=None, x_prev=None):
         """Predictor step with automatic interface handling."""
         # Combined score function
         def combined_score_fn(x_input, t_input):
@@ -444,30 +345,30 @@ def get_pc_conditional_sampler(sde, classifier, shape, predictor, corrector, inv
             
             _, current_noise_scale = sde.marginal_prob(x_input, t_input)
             current_classifier_grad = classifier_grad_fn(x_input, current_noise_scale, labels)
-            
+
             return diffusion_score + current_classifier_grad
         
-        # Create predictor with interface detection
+        # CRÉATION du predictor avec la bonne interface selon le type
         if predictor is None:
-            predictor_obj = NonePredictor(sde, combined_score_fn, probability_flow)
+            predictor_obj = NonePredictor(sde, combined_score_fn, shape, probability_flow)
+            return predictor_obj.update_fn(x, t)
         else:
-            if is_fast_predictor:
-                # Interface sampling_fast.py
-                predictor_obj = predictor(
-                    sde=sde,
-                    score_fn=combined_score_fn,
-                    probability_flow=probability_flow,
-                    shape=x.shape,
-                    eps=eps
-                )
+            if is_adaptive:
+                # ✅ POUR AdaptivePredictor : interface complète
+                predictor_obj = predictor(sde, combined_score_fn, shape, probability_flow, 
+                                        eps=eps, abstol=0.01, reltol=0.01, 
+                                        error_use_prev=True, norm="L2_scaled", safety=0.9, 
+                                        sde_improved_euler=True, extrapolation=True, exp=0.9)
+                # AdaptivePredictor retourne (x, x_prev, t, h)
+                return predictor_obj.update_fn(x, t, h, x_prev)
             else:
-                # Interface sampling.py standard
-                predictor_obj = predictor(sde, combined_score_fn, probability_flow)
-        
-        return predictor_obj.update_fn(x, t)
+                # ✅ POUR les autres predictors : interface standard
+                predictor_obj = predictor(sde, combined_score_fn, shape, probability_flow)
+                # Predictors standards retournent (x, x_mean)
+                return predictor_obj.update_fn(x, t)
     
     def conditional_corrector_update_fn(x, t, labels, model):
-        """Corrector step - reste inchangé car les correctors sont dans sampling.py."""
+        """Corrector step - interface standard."""
         def combined_score_fn(x_input, t_input):
             score_fn = mutils.get_score_fn(sde, model, train=False, continuous=continuous)
             diffusion_score = score_fn(x_input, t_input)
@@ -489,24 +390,53 @@ def get_pc_conditional_sampler(sde, classifier, shape, predictor, corrector, inv
         with torch.no_grad():
             x = sde.prior_sampling(shape).to(device)
             
-            if is_fast_predictor and hasattr(sde, 'N'):
-                # Mode adaptatif potentiel - utiliser timesteps flexibles
-                timesteps = torch.linspace(sde.T, eps, sde.N, device=device)
+            if is_adaptive:
+                logging.info("🔄 Utilisation du sampling adaptatif")
+                h = torch.ones(shape[0], device=device) * 0.01  # h_init
+                t = torch.ones(shape[0], device=device) * sde.T  # initial time
+                x_prev = x.clone()
+                
+                N = 0  
+                    
+                while (torch.abs(t - eps) > 1e-6).any() :
+
+                    x, x_mean = conditional_corrector_update_fn(x, t, labels, model)  
+                    x_prev = x_mean  
+                    
+                    corrector_name = getattr(corrector, '__name__', 'none') if corrector is not None else 'none'
+                    predictor_name = getattr(predictor, '__name__', 'none') if predictor is not None else 'none'
+                    
+                    if corrector_name != "none":  
+                        N = N + 1
+                        
+                    x, x_prev, t, h = conditional_predictor_update_fn(x, t, labels, model, h, x_prev)
+                    
+                    if predictor_name != "none":  
+                        N = N + 2
+                    
+                # Débruitage final pour AdaptivePredictor
+                if denoise:
+                    eps_t = torch.ones(shape[0], device=device) * eps
+                    score_fn = mutils.get_score_fn(sde, model, train=False, continuous=continuous)
+                    _, std = sde.marginal_prob(x, eps_t)  # ✅ FIX: syntaxe correcte
+                    x = x + (std[:, None, None, None] ** 2) * score_fn(x, eps_t)
+                
+                return inverse_scaler(x)
+                
             else:
-                # Mode standard
+                # ============ LOGIQUE STANDARD ============
                 timesteps = torch.linspace(sde.T, eps, sde.N, device=device)
-            
-            # Sampling loop standard (marche pour tous les predictors)
-            for i in range(sde.N):
-                t = timesteps[i]
-                vec_t = torch.ones(shape[0], device=device) * t
                 
-                # Corrector step
-                x, x_mean = conditional_corrector_update_fn(x, vec_t, labels, model)
+                for i in range(sde.N):
+                    t_step = timesteps[i]
+                    vec_t = torch.ones(shape[0], device=device) * t_step
+                    
+                    # Corrector step
+                    x, x_mean = conditional_corrector_update_fn(x, vec_t, labels, model)
+                    
+                    # Predictor step standard
+                    x, x_mean = conditional_predictor_update_fn(x, vec_t, labels, model)
                 
-                # Predictor step  
-                x, x_mean = conditional_predictor_update_fn(x, vec_t, labels, model)
-            
-            return inverse_scaler(x_mean if denoise else x)
+                return inverse_scaler(x_mean if denoise else x)
     
     return pc_conditional_sampler

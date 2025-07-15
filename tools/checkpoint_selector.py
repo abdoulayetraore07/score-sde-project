@@ -7,8 +7,10 @@ import os
 import re
 import logging
 from typing import Dict, Optional, Tuple
+import random
 
 USE_CUSTOM = False
+RANDOM_CHOICE = False
 
 def list_afhq_checkpoints(checkpoint_dir: str = "experiments/afhq_512_ncsnpp_continuous/checkpoints") -> Dict[int, str]:
     """
@@ -69,9 +71,14 @@ def select_afhq_checkpoint(model_name: str, interactive: bool = True) -> Optiona
     
     if not interactive or not USE_CUSTOM:
         # Mode non-interactif, prendre le plus récent
-        max_iter = max(checkpoints.keys())
-        logging.info(f"🔄 Mode auto: utilisation du checkpoint le plus récent ({max_iter:,} itérations)")
-        return checkpoints[max_iter]
+        if not RANDOM_CHOICE :
+            max_iter = max(checkpoints.keys())
+            logging.info(f"🔄 Mode auto: utilisation du checkpoint le plus récent ({max_iter:,} itérations)")
+            return checkpoints[max_iter]
+        else :
+            iter = random.choice([500000,520000])
+            logging.info(f"🔄 Mode auto: utilisation du checkpoint aléatoire ({iter:,} itérations)")
+            return checkpoints[iter]
     
     # Mode interactif - demander à l'utilisateur
     print("\n" + "="*60)

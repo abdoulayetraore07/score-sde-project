@@ -31,6 +31,7 @@ import datasets
 import losses
 from utils import restore_checkpoint
 from tools.checkpoint_selector import select_afhq_checkpoint, copy_checkpoint_to_meta
+from tools.seed_utils import configure_batch_seeds, apply_batch_seeds, log_seed_strategy
 
 # ✅ IMPORT DU MODULE EXTERNE
 from tools.config_modifier import interactive_config_modification, print_config_summary
@@ -75,7 +76,7 @@ def load_config(model_name):
         raise ValueError(f"Modèle '{model_name}' non supporté. Utilisez 'church' ou 'celebahq_256' ou 'ffhq_1024 ou afhq_512'")
 
 
-def quick_sample_from_checkpoint(model_name, checkpoint_path, num_samples=8, output_dir=None):
+def quick_sample_from_checkpoint(model_name, checkpoint_path, num_samples=8, output_dir=None, seed_mode='random'):
     """
     Génère des samples en réutilisant directement les fonctions de run_lib.py
     """
@@ -141,6 +142,10 @@ def quick_sample_from_checkpoint(model_name, checkpoint_path, num_samples=8, out
     sampling_shape = (num_samples, config.data.num_channels, config.data.image_size, config.data.image_size)
     sampling_fn = sampling.get_sampling_fn(config, sde, sampling_shape, inverse_scaler, sampling_eps)
     
+    logging.info("🎯 Configuration des seeds...")
+    batch_seed, seeds_info = configure_batch_seeds(num_samples, seed_mode)
+    log_seed_strategy(seed_mode, num_samples)
+    
     # RÉUTILISATION: Génération exactement comme run_lib.py (lignes 150-152)
     logging.info("🎨 Génération des samples...")
     logging.info(f"   Méthode: {config.sampling.method}")
@@ -149,10 +154,14 @@ def quick_sample_from_checkpoint(model_name, checkpoint_path, num_samples=8, out
     ema.store(score_model.parameters())
     ema.copy_to(score_model.parameters())
 
+    # ✅ NOUVEAU: Application des seeds juste avant génération
+    apply_batch_seeds(batch_seed, seeds_info)
+
     # Timer pour estimer le temps
     import time
     start_time = time.time()
 
+    # ✅ GÉNÉRATION BATCH (INCHANGÉE - RAPIDE)
     sample, nfe = sampling_fn(score_model)
 
     elapsed_time = time.time() - start_time
@@ -209,7 +218,7 @@ def quick_sample_from_checkpoint(model_name, checkpoint_path, num_samples=8, out
     return output_dir
 
 
-def sample_pretrained_model(model_name, num_samples=4, output_dir=None, interactive=True):
+def sample_pretrained_model(model_name, num_samples=4, output_dir=None, interactive=True, seed_mode='random'):
     """
     Interface simple qui utilise les chemins de checkpoint par défaut avec sélection AFHQ.
     """
@@ -241,37 +250,74 @@ def sample_pretrained_model(model_name, num_samples=4, output_dir=None, interact
         logging.info("💡 Vérifiez que le modèle est bien entraîné ou spécifiez un autre chemin")
         return None
     
-    return quick_sample_from_checkpoint(model_name, checkpoint_path, num_samples, output_dir)
-
+    return quick_sample_from_checkpoint(model_name, checkpoint_path, num_samples, output_dir, seed_mode)
 
 
 def main():
-    """Point d'entrée principal."""
-    if len(sys.argv) < 2:
-        logging.info("Usage: python pretrained_sampling.py [church|celebahq_256|ffhq_1024|afhq_512] [num_samples] [output_dir] [--auto]")
-        logging.info("  --auto: Mode automatique (pas de sélection interactive pour AFHQ)")
-        sys.exit(1)
+    """Point d'entrée principal avec support des seeds."""
+    import argparse
+    #python pretrained_sampling.py afhq_512 15 --seeds 12,22,23,43,33,233,332,38, 39, 40, 37, 209, 392, 329, 983
+    parser = argparse.ArgumentParser(description='Sampling pour modèles pré-entraînés avec seeds')
+    parser.add_argument('model', choices=['church', 'celebahq_256', 'ffhq_1024', 'afhq_512'], 
+                       help='Modèle à utiliser')
+    parser.add_argument('num_samples', type=int, default=4, nargs='?',
+                       help='Nombre d\'échantillons (défaut: 4)')
+    parser.add_argument('output_dir', type=str, default=None, nargs='?',
+                       help='Dossier de sortie (optionnel)')
+    parser.add_argument('checkpoint_path', type=str, default=None, nargs='?',
+                       help='Chemin du checkpoint (optionnel)')
     
-    model_name = sys.argv[1]
-    num_samples = int(sys.argv[2]) if len(sys.argv) > 2 else 4
-    output_dir = sys.argv[3] if len(sys.argv) > 3 else None
+    parser.add_argument('--fixed-seeds', action='store_true', 
+                       help='Utiliser des seeds fixes (reproductible) - DÉFAUT')
+    parser.add_argument('--random-seeds', action='store_true',
+                       help='Utiliser des seeds aléatoires')
+    parser.add_argument('--seeds', type=str,
+                       help='Seeds personnalisés séparés par des virgules (ex: 42,123,456)')
+    parser.add_argument('--auto', action='store_true',
+                       help='Mode automatique (pas d\'interaction)')
     
-    # Vérifier le mode automatique
-    interactive = '--auto' not in sys.argv
+    args = parser.parse_args()
+   
+    if args.fixed_seeds:            # Si --fixed-seeds → fixe
+        seed_mode = 'fixed'
+    elif args.random_seeds:         # Si --random-seeds → aléatoire
+        seed_mode = 'random'
+    elif args.seeds:                # Si --seeds 42,123 → personnalisé  
+        seed_mode = [int(s.strip()) for s in args.seeds.split(',')]
+    else:                          # SINON → aléatoire (défaut option B)
+        seed_mode = 'random'
     
-    # Si un checkpoint custom est fourni (5ème argument)
-    if len(sys.argv) > 4 and not sys.argv[4].startswith('--'):
-        checkpoint_path = sys.argv[4]
-        result_dir = quick_sample_from_checkpoint(model_name, checkpoint_path, num_samples, output_dir)
+    interactive = not args.auto
+    
+    # ✅ AFFICHAGE DE LA CONFIGURATION
+    logging.info("="*60)
+    logging.info("🎯 SAMPLING CONFIGURATION")
+    logging.info("="*60)
+    logging.info(f"Modèle: {args.model}")
+    logging.info(f"Échantillons: {args.num_samples}")
+    if seed_mode == 'random':
+        logging.info("Seeds: ALÉATOIRES")
+    elif seed_mode == 'fixed':
+        logging.info("Seeds: FIXES (reproductible)")
+    elif isinstance(seed_mode, list):
+        logging.info(f"Seeds: PERSONNALISÉS {seed_mode}")
+    if args.auto:
+        logging.info("Mode: AUTOMATIQUE")
+    logging.info("="*60)
+    
+    # Si un checkpoint custom est fourni
+    if args.checkpoint_path:
+        result_dir = quick_sample_from_checkpoint(args.model, args.checkpoint_path, 
+                                                 args.num_samples, args.output_dir, seed_mode)
     else:
-        result_dir = sample_pretrained_model(model_name, num_samples, output_dir, interactive=interactive)
+        result_dir = sample_pretrained_model(args.model, args.num_samples, args.output_dir, 
+                                           interactive, seed_mode)
     
     if result_dir:
         print(f"\n✨ Terminé! Résultats dans: {result_dir}")
     else:
         print("\n❌ Échec de la génération")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

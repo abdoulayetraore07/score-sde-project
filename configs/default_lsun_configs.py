@@ -31,14 +31,19 @@ def get_default_configs():
   sampling.noise_removal = True
   sampling.probability_flow = False
   sampling.snr = 0.075
+  sampling.method = 'pc'
+  sampling.predictor = 'reverse_diffusion'
+  sampling.corrector = 'langevin'
+  #sampling.predictor = 'adaptive'
+  #sampling.corrector = 'none'
 
   # NOUVEAUX: Fast sampling parameters
   sampling.sampling_h_init = 1e-2
-  sampling.sampling_abstol = 0.0039  
+  sampling.sampling_abstol = 1e-2
   sampling.sampling_reltol = 1e-2
   sampling.error_use_prev = True
   sampling.norm = "L2_scaled"
-  sampling.sampling_safety = 0.9
+  sampling.sampling_safety = 0.8
   sampling.extrapolation = True
   sampling.sde_improved_euler = True
   sampling.sampling_exp = 0.9

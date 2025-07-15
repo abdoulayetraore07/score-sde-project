@@ -287,6 +287,7 @@ class AdaptivePredictor(Predictor):
 
   def update_fn(self, x, t, h, x_prev): 
     # Note: both h and t are vectors with batch_size elems (this is because we want adaptive step-sizes for each sample separately)
+    
     my_rsde = self.rsde.sde
 
     h_ = h[:, None, None, None]  # expand for multiplications
@@ -328,7 +329,6 @@ class AdaptivePredictor(Predictor):
     else:
       reltol_ctl = torch.abs(x_check) * self.reltol
     err_ctl = torch.clamp(reltol_ctl, min=self.abstol)
-
     # Normalizing for each sample separately
     E_scaled_norm = self.norm_fn(E/err_ctl)
 
@@ -339,7 +339,7 @@ class AdaptivePredictor(Predictor):
     t_ = torch.where(accept, t_ - h_, t_)
 
     # Change the step-size
-    h_max = torch.clamp(t_ - self.eps, min=0)  # max step-size must be the distance to the end
+    h_max = torch.clamp(t_ - self.eps, min=0) # max step-size must be the distance to the end (we use maximum between that and zero
     E_pow = torch.where(h_ == 0, h_, torch.pow(E_scaled_norm, -self.exp))  # Only applies power when not zero, otherwise, we get nans
     h_new = torch.minimum(h_max, self.safety*h_*E_pow)
 
@@ -439,7 +439,7 @@ class NoneCorrector(Corrector):
 
 
 def shared_predictor_update_fn(x, t, h=None, x_prev=None, sde=None, shape=None, model=None, predictor=None, probability_flow=None, continuous=None, 
-  eps=1e-3, abstol=1e-2, reltol=1e-2, error_use_prev=True, norm="L2_scaled", safety=.9, extrapolation=False, sde_improved_euler=False, exp=0.9):
+  eps=1e-3, abstol=1e-2, reltol=1e-2, error_use_prev=True, norm="L2_scaled", safety=.9, extrapolation=True, sde_improved_euler=True, exp=0.9):
   """A wrapper that configures and returns the update function of predictors."""
   score_fn = mutils.get_score_fn(sde, model, train=False, continuous=continuous)
   if predictor is None:
@@ -464,7 +464,7 @@ def shared_corrector_update_fn(x, t, sde, model, corrector, continuous, snr, n_s
 
 
 def get_pc_sampler(sde, shape, predictor, predictor_name, corrector, corrector_name, inverse_scaler, snr,
-                   n_steps=1, probability_flow=False, continuous=False,
+                   n_steps=1, probability_flow=False, continuous=True,
                    denoise=True, eps=1e-3, device='cuda', h_init=1e-2, abstol=1e-2, reltol=1e-2, 
                    error_use_prev=True, norm="L2_scaled", safety=.9, 
                    extrapolation=True, sde_improved_euler=True, exp=0.9):
@@ -539,32 +539,39 @@ def get_pc_sampler(sde, shape, predictor, predictor_name, corrector, corrector_n
       return inverse_scaler(x_mean if denoise else x), sde.N * (n_steps + 1)
 
   def pc_sampler_adaptive(model):
-    """ The PC sampler function for adaptive methods.
-
-    Args:
-      model: A score model.
-    Returns:
-      Samples, number of function evaluations.
-    """
+    """ The PC sampler function for adaptive methods."""
     with torch.no_grad():
       # Initial sample
       x = sde.prior_sampling(shape).to(device)
-      h = torch.ones(shape[0], device=device) * h_init  # initial step_size
-      t = torch.ones(shape[0], device=device) * sde.T  # initial time
-      x_prev = x
-
-      N = 0
+      h = torch.ones(shape[0], device=device) * h_init
+      t = torch.ones(shape[0], device=device) * sde.T
+      x_prev = x.clone()  
+      
+      N = 0  
+      
       while (torch.abs(t - eps) > 1e-6).any():
-        x, x_prev, t, h = predictor_update_fn(x, t, h, x_prev=x_prev, model=model)
-        N = N + 1
+          # Corrector step
+          x, x_mean = corrector_update_fn(x, t, model=model)
+          x_prev = x_mean
+          if corrector_name != "none":
+              N = N + 1
+              
+          # Predictor step  
+          x, x_prev, t, h = predictor_update_fn(x, t, h, x_prev=x_prev, model=model)
+          if predictor_name != "none":
+              N = N + 2
 
-      # Denoising with Tweeddie's Formula
+      # Denoising
       if denoise:
-        eps_t = torch.ones(shape[0]).to(device) * eps
-        u, std = sde.marginal_prob(x, eps_t)
-        x = x + (std[:, None, None, None] ** 2) * model(x, eps_t)
-    
+          score_fn = mutils.get_score_fn(sde, model, train=False, continuous=continuous)
+          eps_t = torch.ones(shape[0]).to(device) * eps
+          u, std = sde.marginal_prob(x, eps_t)
+          x = x + (std[:, None, None, None] ** 2) * score_fn(x, eps_t)  
+     
+        
+      
       return x, N + 1
+     
 
   # Choose the appropriate sampler
   if predictor_name == "adaptive":
@@ -574,7 +581,7 @@ def get_pc_sampler(sde, shape, predictor, predictor_name, corrector, corrector_n
 
 
 def get_ode_sampler(sde, shape, inverse_scaler,
-                    denoise=False, rtol=1e-5, atol=1e-5,
+                    denoise=True, rtol=1e-5, atol=1e-5,
                     method='RK45', eps=1e-3, device='cuda'):
   """Probability flow ODE sampler with the black-box ODE solver.
 

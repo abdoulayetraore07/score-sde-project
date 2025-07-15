@@ -16,12 +16,6 @@ def get_config():
   training.sde = 'vesde'
   training.continuous = True
 
-  # sampling
-  sampling = config.sampling
-  sampling.method = 'pc'
-  sampling.predictor = 'reverse_diffusion'
-  sampling.corrector = 'langevin'
-
   # data
   data = config.data
   data.dataset = 'CelebAHQ'

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script pour figer les seeds par image avec option on/off.
+Script pour la gestion des seeds avec génération batch.
 """
 
 import torch
@@ -8,82 +8,94 @@ import numpy as np
 import random
 
 # Configuration globale
-FIXED_SEEDS = [65, 103, 487, 987]  # Seeds fixes pour les 4 premières images
-USE_FIXED_SEEDS = False  # Mettre False pour désactiver
+FIXED_SEEDS = [65, 103, 487, 987, 136, 29, 42, 37]  # Seeds fixes pour les 8 premières images
 
-def set_seeds_for_sampling(num_samples, use_fixed=None):
+def configure_batch_seeds(num_samples, seed_mode='fixed'):
     """
-    Configure les seeds pour le sampling.
+    Configure les seeds pour génération batch (RAPIDE).
     
     Args:
         num_samples: nombre d'images à générer
-        use_fixed: True/False pour forcer, None pour utiliser USE_FIXED_SEEDS
+        seed_mode: 'fixed', 'random', ou liste de seeds
     
     Returns:
-        Liste des seeds utilisés
+        tuple: (batch_seed, seeds_info)
+            - batch_seed: int pour torch.manual_seed() ou None
+            - seeds_info: liste des seeds individuels pour debug
     """
-    global USE_FIXED_SEEDS, FIXED_SEEDS
+    if seed_mode == 'random':
+        return None, None
     
-    if use_fixed is None:
-        use_fixed = USE_FIXED_SEEDS
-    
-    if not use_fixed:
-        # Seeds aléatoires normaux
-        return None
-    
-    # Utiliser les seeds fixes pour les premières images
-    seeds_used = []
-    for i in range(num_samples):
-        if i < len(FIXED_SEEDS):
-            seed = FIXED_SEEDS[i]
-        else:
-            # Pour les images au-delà de 4, utiliser un pattern
-            seed = FIXED_SEEDS[i % len(FIXED_SEEDS)] + (i // len(FIXED_SEEDS)) * 1000
+    elif seed_mode == 'fixed':
+        # Utiliser les seeds fixes existants
+        base_seeds = FIXED_SEEDS  # [65, 103, 487, 987, 136, 29, 42, 37]
         
-        seeds_used.append(seed)
+        # Créer la liste complète des seeds
+        full_seeds = []
+        for i in range(num_samples):
+            if i < len(base_seeds):
+                full_seeds.append(base_seeds[i])
+            else:
+                # Pattern pour images supplémentaires
+                base_idx = i % len(base_seeds)
+                offset = (i // len(base_seeds)) * 1000
+                full_seeds.append(base_seeds[base_idx] + offset)
+        
+        # Calculer UN seed unique pour tout le batch
+        # Méthode déterministe simple
+        combined_seed = sum(full_seeds) % 2147483647  # Max int32
+        
+        return combined_seed, full_seeds
     
-    return seeds_used
+    elif isinstance(seed_mode, list):
+        # Seeds personnalisés
+        if len(seed_mode) >= num_samples:
+            user_seeds = seed_mode[:num_samples]
+        else:
+            # Répéter les seeds si pas assez
+            user_seeds = (seed_mode * ((num_samples // len(seed_mode)) + 1))[:num_samples]
+        
+        combined_seed = sum(user_seeds) % 2147483647
+        return combined_seed, user_seeds
+    
+    else:
+        return None, None
 
-def apply_seed_before_generation(sample_idx, seeds_list=None):
+def apply_batch_seeds(batch_seed, seeds_info=None):
     """
-    Applique le seed avant de générer une image spécifique.
+    Applique les seeds pour génération batch.
     
     Args:
-        sample_idx: index de l'image (0, 1, 2, 3...)
-        seeds_list: liste des seeds à utiliser (si None, pas de seed fixe)
-    """
-    if seeds_list is None:
-        return None
-    
-    if sample_idx < len(seeds_list):
-        seed = seeds_list[sample_idx]
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-        np.random.seed(seed)
-        random.seed(seed)
-        return seed
-    
-    return None
-
-def set_global_seed_policy(use_fixed_seeds):
-    """
-    Active/désactive l'utilisation des seeds fixes globalement.
-    
-    Args:
-        use_fixed_seeds: True pour activer, False pour désactiver
-    """
-    global USE_FIXED_SEEDS
-    USE_FIXED_SEEDS = use_fixed_seeds
-
-def log_seed_info(num_samples, seeds_used):
-    """
-    Affiche les informations sur les seeds utilisés.
+        batch_seed: seed à appliquer ou None
+        seeds_info: liste des seeds pour logging
     """
     import logging
     
-    if seeds_used is None:
-        logging.info("🎲 Seeds: ALÉATOIRES (non figés)")
+    if batch_seed is not None:
+        torch.manual_seed(batch_seed)
+        torch.cuda.manual_seed_all(batch_seed)
+        np.random.seed(batch_seed)
+        random.seed(batch_seed)
+        
+        logging.info(f"🎲 Seeds fixes - Batch seed: {batch_seed}")
+        if seeds_info:
+            displayed_seeds = seeds_info[:8]
+            if len(seeds_info) > 8:
+                logging.info(f"🎲 Seeds individuels: {displayed_seeds}... (+{len(seeds_info)-8} autres)")
+            else:
+                logging.info(f"🎲 Seeds individuels: {displayed_seeds}")
     else:
-        logging.info(f"🎲 Seeds figés: {seeds_used[:min(4, len(seeds_used))]}")
-        if len(seeds_used) > 4:
-            logging.info(f"   ... et {len(seeds_used)-4} autres")
+        logging.info("🎲 Seeds: ALÉATOIRES")
+
+def log_seed_strategy(seed_mode, num_samples):
+    """Affiche la stratégie de seeds utilisée."""
+    import logging
+    
+    if seed_mode == 'random':
+        logging.info("🎯 Stratégie: Seeds aléatoires")
+    elif seed_mode == 'fixed':
+        logging.info("🎯 Stratégie: Seeds fixes (reproductible)")
+    elif isinstance(seed_mode, list):
+        logging.info(f"🎯 Stratégie: Seeds personnalisés ({len(seed_mode)} fournis)")
+    
+    logging.info(f"🎯 Images à générer: {num_samples}")
