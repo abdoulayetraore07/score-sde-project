@@ -134,11 +134,11 @@ score-sde-project/
 If you use this work in your research, please cite:
 
 ```bibtex
-@misc{traore2025score,
+@misc{A.Traore2025score,
   title={From Noise to Images: Implementing Score-Based Generative Models using Stochastic Differential Equations},
   author={Abdoulaye Traore},
   year={2025},
-  institution={University of Torino, ENSTA Paris},
+  institution={ENSTA Paris, University of Torino},
   type={Research Internship Report}
 }
 ```
