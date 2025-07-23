@@ -87,7 +87,7 @@ This work introduces three novel strategies to address the challenge of classifi
 - **Architecture**: NCSN++ continuous with EMA rate = 0.9999
 
 ### Training Configuration
-- **Noise Schedule**: Geometric progression from σ_min = 0.01 to dataset-specific σ_max
+- **Noise Schedule**: Geometric progression from σ_min = 0.01 to dataset-specific σ_max (=375 for AFHQ-512)
 - **Optimization**: Adam optimizer with learning rate scheduling
 - **Monitoring**: TensorBoard-based progress tracking without FID computation due to resource constraints
 
