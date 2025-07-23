@@ -89,7 +89,7 @@ Transformation of grayscale images to realistic color versions using orthogonal 
 
 ## Technical Contributions
 
-**The link to my checkpoints and those of Yang song et al. are available in the file setup_arm64.sh. Feel free to use them as you desire.**
+**The link to my checkpoints and those of Yang song et al. are available in the file setup_arm64.sh.**
 
 ### Adaptive Classifier Guidance
 This work introduces three novel strategies to address the challenge of classifier ineffectiveness across different noise levels:
