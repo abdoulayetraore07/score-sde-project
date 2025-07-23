@@ -130,6 +130,7 @@ score-sde-project/
 │   └── afhq_512/
 │       └── general/
 │           └── reverse_diffusion_base/  # Sample outputs
+├── resume_PRE.pdf      # Resume of the internship
 └── README.md
 ```
 
