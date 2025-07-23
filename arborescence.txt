@@ -127,8 +127,42 @@
 │   └── upfirdn2d.py
 ├── pretrained_controllable_gen.py
 ├── pretrained_sampling.py
+├── README.md
 ├── run_lib.py
 ├── samples
+│   ├── afhq_512
+│   │   ├── colorization
+│   │   ├── controllable
+│   │   ├── general
+│   │   └── inpainting
+│   ├── celebahq_256
+│   │   ├── colorization
+│   │   ├── general
+│   │   └── inpainting
+│   ├── church
+│   │   ├── colorization
+│   │   ├── general
+│   │   └── inpainting
+│   ├── extended
+│   │   ├── afhq_1.png
+│   │   ├── afhq_2.png
+│   │   ├── afhq_3.png
+│   │   ├── afhq_4.png
+│   │   ├── afhq_5.png
+│   │   ├── afhq_6.png
+│   │   ├── celebahq_1.png
+│   │   ├── church_1.png
+│   │   └── ffhq_1.png
+│   ├── ffhq_1024
+│   │   ├── colorization
+│   │   ├── general
+│   │   └── inpainting
+│   └── tests_controllable
+│       ├── methode_0
+│       ├── methode_1
+│       ├── methode_2
+│       └── methode_3
+├── samples_complet
 │   ├── afhq_512
 │   │   ├── autres
 │   │   ├── colorization
@@ -200,4 +234,4 @@
 │   └── test_fid_stats.py
 └── utils.py
 
-77 directories, 124 files
+101 directories, 134 files
