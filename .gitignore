@@ -15,3 +15,4 @@ experiments/*/checkpoints/*
 # System
 .DS_Store
 *.log
+samples_complet/
