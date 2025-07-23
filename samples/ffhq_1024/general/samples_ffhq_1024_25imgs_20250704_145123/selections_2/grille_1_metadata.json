@@ -1,0 +1,25 @@
+{
+  "source_folder": "/Users/abdoulayetraore/Downloads/score_sde_pytorch/samples/ffhq_1024/general/samples_ffhq_1024_25imgs_20250704_145123/selections_2",
+  "grid_file": "/Users/abdoulayetraore/Downloads/score_sde_pytorch/samples/ffhq_1024/general/samples_ffhq_1024_25imgs_20250704_145123/selections_2/grille_1.png",
+  "total_images": 8,
+  "grid_dimensions": "4x2",
+  "image_size": [
+    256,
+    256
+  ],
+  "background_color": [
+    255,
+    255,
+    255
+  ],
+  "images_processed": [
+    "sample_008.png",
+    "sample_009.png",
+    "sample_010.png",
+    "sample_011.png",
+    "sample_015.png",
+    "sample_016.png",
+    "sample_017.png",
+    "sample_018.png"
+  ]
+}

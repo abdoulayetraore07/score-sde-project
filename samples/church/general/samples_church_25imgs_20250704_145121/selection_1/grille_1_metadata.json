@@ -1,0 +1,25 @@
+{
+  "source_folder": "/Users/abdoulayetraore/Downloads/score_sde_pytorch/samples/church/general/samples_church_25imgs_20250704_145121/selection_1",
+  "grid_file": "/Users/abdoulayetraore/Downloads/score_sde_pytorch/samples/church/general/samples_church_25imgs_20250704_145121/selection_1/grille_1.png",
+  "total_images": 8,
+  "grid_dimensions": "4x2",
+  "image_size": [
+    256,
+    256
+  ],
+  "background_color": [
+    255,
+    255,
+    255
+  ],
+  "images_processed": [
+    "sample_000.png",
+    "sample_001.png",
+    "sample_002.png",
+    "sample_003.png",
+    "sample_004.png",
+    "sample_005.png",
+    "sample_006.png",
+    "sample_007.png"
+  ]
+}
