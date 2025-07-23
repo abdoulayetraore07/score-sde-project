@@ -1,90 +1,32 @@
 .
 ├── __pycache__
-│   ├── controllable_generation.cpython-39.pyc
-│   ├── datasets.cpython-39.pyc
-│   ├── debug.cpython-310.pyc
-│   ├── debug.cpython-39.pyc
-│   ├── evaluation.cpython-39.pyc
-│   ├── likelihood.cpython-39.pyc
-│   ├── losses.cpython-39.pyc
-│   ├── run_lib.cpython-39.pyc
-│   ├── sampling.cpython-39.pyc
-│   ├── sde_lib.cpython-310.pyc
-│   ├── sde_lib.cpython-39.pyc
-│   ├── train_afhq_classifier.cpython-39.pyc
-│   └── utils.cpython-39.pyc
 ├── arborescence.txt
 ├── assets
 │   ├── cond_gen_afhq_512
-│   │   ├── 0001.png
-│   │   ├── 0006.png
-│   │   ├── 0010.png
-│   │   ├── 0012.png
-│   │   ├── 0013.png
-│   │   ├── 0015.png
-│   │   ├── 0023.png
-│   │   ├── 0040.png
-│   │   ├── 0045.png
-│   │   ├── 0049.png
-│   │   ├── 0054.png
 │   │   ├── 0064.png
 │   │   ├── 0074.png
-│   │   ├── 0086.png
-│   │   ├── 0089.png
-│   │   ├── 0146.png
-│   │   ├── 0147.png
-│   │   ├── 0234.png
-│   │   ├── 0354.png
-│   │   ├── 0479.png
-│   │   ├── 0538.png
-│   │   ├── 0551.png
-│   │   ├── 0589.png
-│   │   ├── 0641.png
-│   │   ├── 0830.png
-│   │   ├── 0845.png
-│   │   ├── 0853.png
-│   │   ├── 1042.png
-│   │   ├── 1165.png
-│   │   ├── 1167.png
-│   │   ├── 1169.png
-│   │   ├── 1189.png
-│   │   ├── 1197.png
-│   │   ├── 1220.png
 │   │   ├── 1235.png
-│   │   ├── 1269.png
 │   │   ├── cat.png
 │   │   ├── dog.png
 │   │   └── wild.png
 │   ├── cond_gen_celebahq_256
-│   │   ├── 00000.jpg
-│   │   ├── 00004.jpg
 │   │   ├── 00007.jpg
 │   │   ├── 00013.jpg
 │   │   ├── 00020.jpg
 │   │   ├── 00023.jpg
-│   │   ├── 00096.jpg
-│   │   ├── 00118.jpg
 │   │   ├── 00119.jpg
 │   │   └── 00144.jpg
 │   ├── cond_gen_church
-│   │   ├── image_10.jpg
 │   │   ├── image_16.jpg
 │   │   ├── image_19.jpg
-│   │   ├── image_2.jpg
-│   │   ├── image_3.jpg
 │   │   ├── image_4.jpg
-│   │   ├── image_5.jpg
 │   │   ├── image_6.jpg
 │   │   ├── image_7.jpg
 │   │   └── image.jpg
 │   └── cond_gen_ffhq_1024
-│       ├── 69942.png
-│       ├── 69944.png
 │       ├── 69945.png
-│       ├── 69948.png
 │       ├── 69971.png
 │       ├── 69977.png
-│       ├── 69985.png
 │       ├── 69988.png
 │       ├── 69991.png
 │       └── 69994.png
@@ -127,41 +69,6 @@
 │   └── ffhq_1024_ncsnpp_continuous
 │       ├── checkpoints
 │       └── checkpoints-meta
-├── images
-│   └── sample
-│       ├── metadata.json
-│       ├── sample_array_000.png
-│       ├── sample_array_001.png
-│       ├── sample_array_002.png
-│       ├── sample_array_003.png
-│       ├── sample_array_004.png
-│       ├── sample_array_005.png
-│       ├── sample_array_006.png
-│       ├── sample_array_007.png
-│       ├── sample_array_008.png
-│       ├── sample_array_009.png
-│       ├── sample_array_010.png
-│       ├── sample_array_011.png
-│       ├── sample_array_012.png
-│       ├── sample_array_013.png
-│       ├── sample_array_014.png
-│       ├── sample_array_015.png
-│       ├── sample_array_016.png
-│       ├── sample_array_017.png
-│       ├── sample_array_018.png
-│       ├── sample_array_019.png
-│       ├── sample_array_020.png
-│       ├── sample_array_021.png
-│       ├── sample_array_022.png
-│       ├── sample_array_023.png
-│       ├── sample_array_024.png
-│       ├── sample_array_025.png
-│       ├── sample_array_026.png
-│       ├── sample_array_027.png
-│       ├── sample_array_028.png
-│       ├── sample_array_029.png
-│       ├── sample_array_030.png
-│       └── sample_array_031.png
 ├── LICENSE
 ├── likelihood.py
 ├── losses.py
@@ -223,19 +130,59 @@
 ├── run_lib.py
 ├── samples
 │   ├── afhq_512
+│   │   ├── autres
 │   │   ├── colorization
 │   │   ├── controllable
 │   │   ├── general
 │   │   └── inpainting
-│   ├── deja_fait
-│   │   ├── celebahq_256
-│   │   ├── church
-│   │   ├── compar_hyperparametres
-│   │   ├── ffhq_1024
-│   │   └── tests_controllable
-│   └── log_likelihoods
-│       ├── likelihood_results_afhq_512_20250704_222252.csv
-│       └── likelihood_results_afhq_512_20250704_224148.csv
+│   ├── celebahq_256
+│   │   ├── colorization
+│   │   ├── general
+│   │   └── inpainting
+│   ├── church
+│   │   ├── colorization
+│   │   ├── general
+│   │   └── inpainting
+│   ├── compare_hyperparametres
+│   │   ├── A-S
+│   │   ├── ald
+│   │   ├── corrector_none
+│   │   ├── E-M
+│   │   ├── n_steps=2
+│   │   ├── n_steps=3
+│   │   ├── ODE_sampler
+│   │   ├── params_base
+│   │   ├── predictor_none
+│   │   ├── snr=0.1
+│   │   └── snr=0.2
+│   ├── extended
+│   │   ├── afhq_1.png
+│   │   ├── afhq_2.png
+│   │   ├── afhq_3.png
+│   │   ├── afhq_4.png
+│   │   ├── afhq_5.png
+│   │   ├── afhq_6.png
+│   │   ├── celebahq_1.png
+│   │   ├── church_1.png
+│   │   └── ffhq_1.png
+│   ├── ffhq_1024
+│   │   ├── colorization
+│   │   ├── general
+│   │   └── inpainting
+│   ├── log_likelihoods
+│   │   ├── likelihood_results_afhq_512_20250704_222252.csv
+│   │   └── likelihood_results_afhq_512_20250704_224148.csv
+│   └── tests_controllable
+│       ├── adaptive_max
+│       ├── autres_brouillons
+│       ├── autres_methode_1
+│       ├── autres_methode_2
+│       ├── autres_methode_3
+│       ├── fast_sampling
+│       ├── methode_0
+│       ├── methode_1
+│       ├── methode_2
+│       └── methode_3
 ├── sampling.py
 ├── sde_lib.py
 ├── setup_arm64.sh
@@ -247,9 +194,10 @@
 │   ├── checkpoint_selector.py
 │   ├── compute_sigma_max.py
 │   ├── config_modifier.py
+│   ├── grille_afhq_512_2_metadata.json
 │   ├── npz_viewer.py
 │   ├── seed_utils.py
 │   └── test_fid_stats.py
 └── utils.py
 
-48 directories, 205 files
+77 directories, 124 files

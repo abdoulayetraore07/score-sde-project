@@ -1,0 +1,25 @@
+{
+  "source_folder": "/Users/abdoulayetraore/Downloads/score_sde_pytorch/samples/afhq_512/general/reverse_diffusion_base/grille_2_afhq_512_split",
+  "grid_file": "grille_afhq_512_2.png",
+  "total_images": 8,
+  "grid_dimensions": "2x4",
+  "image_size": [
+    256,
+    256
+  ],
+  "background_color": [
+    255,
+    255,
+    255
+  ],
+  "images_processed": [
+    "cell_00_00.png",
+    "cell_00_10.png",
+    "cell_01_00.png",
+    "cell_01_01.png",
+    "cell_02_00.png",
+    "cell_03_01.png",
+    "cell_03_02.png",
+    "cell_04_11.png"
+  ]
+}

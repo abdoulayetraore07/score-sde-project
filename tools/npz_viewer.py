@@ -4,6 +4,8 @@ Analyseur et Visualiseur NPZ/NPY Complet - Version Autonome (Corrigée)
 Analyse et visualise les fichiers NPZ et NPY contenant des images générées par IA
 Supporte fichiers individuels et dossiers entiers
 Compatible avec tous les formats NPZ/NPY d'images IA
+NOUVEAU: Création de grilles d'images à partir de dossiers d'images
+NOUVEAU: Extraction d'images individuelles depuis une grille
 """
 
 import numpy as np
@@ -20,6 +22,7 @@ warnings.filterwarnings('ignore')
 class NPZAnalyzer:
     def __init__(self):
         self.supported_extensions = ['.npz', '.npy', '.np']
+        self.image_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp', '.gif']
         
     def analyze_npz_file(self, filepath):
         """Analyse un fichier NPZ/NPY et retourne ses informations"""
@@ -254,6 +257,248 @@ class NPZAnalyzer:
             traceback.print_exc()
             return 0
     
+    def split_grid_image(self, grid_path, output_dir=None, rows=None, cols=None, 
+                        cell_width=512, cell_height=512, padding=0):
+        """
+        Extrait les images individuelles d'une grille d'images
+        
+        Args:
+            grid_path (str): Chemin vers l'image de grille
+            output_dir (str): Dossier de sortie (défaut: grid_path_split/)
+            rows (int): Nombre de lignes dans la grille (optionnel si cell_width/height fournis)
+            cols (int): Nombre de colonnes dans la grille (optionnel si cell_width/height fournis)
+            cell_width (int): Largeur de chaque cellule en pixels (défaut: 512)
+            cell_height (int): Hauteur de chaque cellule en pixels (défaut: 512)
+            padding (int): Pixels de padding à ignorer autour de chaque cellule
+        """
+        try:
+            grid_path = Path(grid_path)
+            
+            if not grid_path.exists():
+                print(f"❌ Le fichier {grid_path} n'existe pas")
+                return False
+            
+            # Charger l'image de grille
+            grid_img = Image.open(grid_path)
+            grid_array = np.array(grid_img)
+            
+            print(f"📁 Extraction depuis: {grid_path}")
+            print(f"📐 Taille de la grille: {grid_img.width}x{grid_img.height}")
+            
+            # Définir le dossier de sortie
+            if output_dir is None:
+                output_dir = grid_path.parent / f"{grid_path.stem}_split"
+            else:
+                output_dir = Path(output_dir)
+            
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Calculer rows et cols si pas fournis
+            if rows is None:
+                rows = grid_img.height // cell_height
+            if cols is None:
+                cols = grid_img.width // cell_width
+            
+            print(f"🔳 Grille calculée: {rows} lignes × {cols} colonnes")
+            print(f"📏 Taille des cellules: {cell_width}x{cell_height}")
+            
+            extracted_count = 0
+            metadata = {
+                'source_grid': str(grid_path),
+                'grid_dimensions': f"{rows}x{cols}",
+                'cell_size': f"{cell_width}x{cell_height}",
+                'padding': padding,
+                'extracted_images': []
+            }
+            
+            # Extraire chaque cellule
+            for row in range(rows):
+                for col in range(cols):
+                    # Calculer les coordonnées de la cellule
+                    x1 = col * cell_width + padding
+                    y1 = row * cell_height + padding
+                    x2 = x1 + cell_width - (2 * padding)
+                    y2 = y1 + cell_height - (2 * padding)
+                    
+                    # Vérifier que la cellule est dans l'image
+                    if x2 > grid_img.width or y2 > grid_img.height:
+                        continue
+                    
+                    # Extraire la cellule
+                    if len(grid_array.shape) == 3:  # Image couleur
+                        cell = grid_array[y1:y2, x1:x2, :]
+                    else:  # Image en niveaux de gris
+                        cell = grid_array[y1:y2, x1:x2]
+                    
+                    # Sauvegarder la cellule
+                    cell_filename = f"cell_{row:02d}_{col:02d}.png"
+                    cell_path = output_dir / cell_filename
+                    
+                    success = self._save_image_array(cell, cell_path)
+                    if success:
+                        extracted_count += 1
+                        metadata['extracted_images'].append({
+                            'filename': cell_filename,
+                            'position': f"row_{row}_col_{col}",
+                            'coordinates': [x1, y1, x2, y2],
+                            'size': [x2-x1, y2-y1]
+                        })
+                        
+                        if extracted_count % 5 == 0:
+                            print(f"   📝 Extraites: {extracted_count} images...")
+            
+            # Sauvegarder les métadonnées
+            metadata_path = output_dir / 'split_metadata.json'
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            print(f"✅ {extracted_count} images extraites vers {output_dir}")
+            print(f"📄 Métadonnées: {metadata_path}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Erreur lors de l'extraction de la grille: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    def create_grid_from_folder(self, folder_path, output_path=None, max_images=None, 
+                               cols=None, image_size=(256, 256), background_color=(255, 255, 255)):
+        """
+        Crée une grille d'images à partir d'un dossier contenant des images
+        
+        Args:
+            folder_path (str): Chemin vers le dossier contenant les images
+            output_path (str): Chemin de sortie pour la grille (défaut: dossier_source/grid.png)
+            max_images (int): Nombre maximum d'images à inclure (défaut: toutes)
+            cols (int): Nombre de colonnes (défaut: calculé automatiquement)
+            image_size (tuple): Taille de redimensionnement des images (largeur, hauteur)
+            background_color (tuple): Couleur de fond RGB (défaut: blanc)
+        """
+        try:
+            folder_path = Path(folder_path)
+            
+            if not folder_path.exists() or not folder_path.is_dir():
+                print(f"❌ Le dossier {folder_path} n'existe pas ou n'est pas un dossier")
+                return False
+            
+            # Chercher toutes les images dans le dossier
+            image_files = []
+            for ext in self.image_extensions:
+                image_files.extend(list(folder_path.glob(f"*{ext}")))
+                image_files.extend(list(folder_path.glob(f"*{ext.upper()}")))
+            
+            if not image_files:
+                print(f"❌ Aucune image trouvée dans {folder_path}")
+                print(f"📋 Extensions supportées: {', '.join(self.image_extensions)}")
+                return False
+            
+            # Trier les fichiers par nom pour un ordre cohérent
+            image_files.sort()
+            
+            # Limiter le nombre d'images si nécessaire
+            if max_images and len(image_files) > max_images:
+                image_files = image_files[:max_images]
+                print(f"📊 Limitation à {max_images} images sur {len(image_files)} trouvées")
+            
+            n_images = len(image_files)
+            print(f"🖼️  Traitement de {n_images} images...")
+            
+            # Calculer la disposition de la grille
+            if cols is None:
+                cols = int(np.ceil(np.sqrt(n_images)))
+            rows = int(np.ceil(n_images / cols))
+            
+            print(f"🔳 Grille: {rows} lignes × {cols} colonnes")
+            
+            # Créer la grille
+            grid_width = cols * image_size[0]
+            grid_height = rows * image_size[1]
+            
+            # Créer l'image de fond
+            if len(background_color) == 3:
+                grid = Image.new('RGB', (grid_width, grid_height), background_color)
+            else:
+                grid = Image.new('RGBA', (grid_width, grid_height), background_color)
+            
+            # Placer chaque image dans la grille
+            for i, img_path in enumerate(image_files):
+                try:
+                    # Charger et redimensionner l'image
+                    img = Image.open(img_path)
+                    
+                    # Convertir en RGB si nécessaire
+                    if img.mode == 'RGBA' and len(background_color) == 3:
+                        # Créer un fond blanc pour les images RGBA
+                        background = Image.new('RGB', img.size, (255, 255, 255))
+                        background.paste(img, mask=img.split()[-1])  # Utiliser le canal alpha comme masque
+                        img = background
+                    elif img.mode != 'RGB' and len(background_color) == 3:
+                        img = img.convert('RGB')
+                    elif img.mode != 'RGBA' and len(background_color) == 4:
+                        img = img.convert('RGBA')
+                    
+                    # Redimensionner l'image en gardant les proportions
+                    img.thumbnail(image_size, Image.Resampling.LANCZOS)
+                    
+                    # Centrer l'image dans la cellule
+                    cell_x = (i % cols) * image_size[0]
+                    cell_y = (i // cols) * image_size[1]
+                    
+                    # Calculer la position pour centrer l'image
+                    paste_x = cell_x + (image_size[0] - img.width) // 2
+                    paste_y = cell_y + (image_size[1] - img.height) // 2
+                    
+                    # Coller l'image dans la grille
+                    if img.mode == 'RGBA':
+                        grid.paste(img, (paste_x, paste_y), img)
+                    else:
+                        grid.paste(img, (paste_x, paste_y))
+                    
+                    if (i + 1) % 10 == 0:
+                        print(f"   📝 Traité: {i + 1}/{n_images} images")
+                        
+                except Exception as e:
+                    print(f"⚠️  Erreur avec {img_path}: {e}")
+                    continue
+            
+            # Définir le chemin de sortie
+            if output_path is None:
+                output_path = folder_path / "grid.png"
+            else:
+                output_path = Path(output_path)
+            
+            # Sauvegarder la grille
+            grid.save(output_path, format='PNG')
+            
+            # Créer un fichier de métadonnées
+            metadata = {
+                'source_folder': str(folder_path),
+                'grid_file': str(output_path),
+                'total_images': n_images,
+                'grid_dimensions': f"{rows}x{cols}",
+                'image_size': image_size,
+                'background_color': background_color,
+                'images_processed': [str(img.name) for img in image_files]
+            }
+            
+            metadata_path = output_path.parent / f"{output_path.stem}_metadata.json"
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            print(f"✅ Grille créée: {output_path}")
+            print(f"📄 Métadonnées: {metadata_path}")
+            print(f"📐 Taille finale: {grid.width}x{grid.height} pixels")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Erreur lors de la création de la grille: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+    
     def _process_array_to_images(self, array, key_name):
         """Convertit un array numpy en liste d'images"""
         images = []
@@ -433,32 +678,40 @@ class NPZAnalyzer:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Analyseur et Visualiseur NPZ/NPY/NP Complet",
+        description="Analyseur et Visualiseur NPZ/NPY/NP Complet + Créateur de grilles d'images + Extracteur de grilles",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemples d'utilisation:
 
   # Analyser un fichier NPZ, NPY ou NP (sans extraction)
-  python npz_analyzer.py chemin/vers/fichier.npz --analyze-only
-  python npz_analyzer.py chemin/vers/fichier.npy --analyze-only
-  python npz_analyzer.py chemin/vers/fichier.np --analyze-only
+  python npz_viewer.py chemin/vers/fichier.npz --analyze-only
+  python npz_viewer.py chemin/vers/fichier.npy --analyze-only
+  python npz_viewer.py chemin/vers/fichier.np --analyze-only
 
   # Extraire images individuelles d'un fichier
-  python npz_analyzer.py chemin/vers/fichier.npz --output ./images --individual
-  python npz_analyzer.py chemin/vers/fichier.npy --output ./images --individual
-  python npz_analyzer.py chemin/vers/fichier.np --output ./images --individual
+  python npz_viewer.py chemin/vers/fichier.npz --output ./images --individual
+  python npz_viewer.py chemin/vers/fichier.npy --output ./images --individual
+  python npz_viewer.py chemin/vers/fichier.np --output ./images --individual
 
   # Créer une grille d'images d'un fichier
-  python npz_analyzer.py chemin/vers/fichier.npz --output ./images --grid
+  python npz_viewer.py chemin/vers/fichier.npz --output ./images --grid
 
   # Traiter un dossier entier avec images individuelles ET grille
-  python npz_analyzer.py chemin/vers/dossier/ --output ./extractions --individual --grid
+  python npz_viewer.py chemin/vers/dossier/ --output ./extractions --individual --grid
 
   # Analyser tous les fichiers d'un dossier
-  python npz_analyzer.py chemin/vers/dossier/ --analyze-only
+  python npz_viewer.py chemin/vers/dossier/ --analyze-only
+
+  # NOUVEAU: Créer une grille à partir d'un dossier d'images
+  python npz_viewer.py --image-grid chemin/vers/dossier_images/ --output ./grille.png
+  python npz_viewer.py --image-grid chemin/vers/dossier_images/ --output ./grille.png --max-images 100 --cols 10 --image-size 128 128
+
+  # NOUVEAU: Extraire images individuelles d'une grille
+  python npz_viewer.py --split-grid chemin/vers/grille.png --cell-width 512 --cell-height 512
+  python npz_viewer.py --split-grid grille_1030x2058.png --cell-width 515 --cell-height 515 --output ./extraites/
         """)
     
-    parser.add_argument("input", help="Chemin vers le fichier NPZ/NPY/NP ou le dossier contenant les fichiers")
+    parser.add_argument("input", nargs='?', help="Chemin vers le fichier NPZ/NPY/NP ou le dossier contenant les fichiers")
     parser.add_argument("--output", "-o", default="./npz_extracted", 
                         help="Dossier de sortie pour les images extraites (défaut: ./npz_extracted)")
     parser.add_argument("--individual", "-i", action="store_true", 
@@ -468,7 +721,83 @@ Exemples d'utilisation:
     parser.add_argument("--analyze-only", "-a", action="store_true", 
                         help="Analyser seulement sans extraire les images")
     
+    # OPTIONS pour la création de grille d'images
+    parser.add_argument("--image-grid", type=str, 
+                        help="Créer une grille à partir d'un dossier d'images existantes")
+    parser.add_argument("--max-images", type=int, 
+                        help="Nombre maximum d'images à inclure dans la grille")
+    parser.add_argument("--cols", type=int, 
+                        help="Nombre de colonnes dans la grille (défaut: calculé automatiquement)")
+    parser.add_argument("--image-size", type=int, nargs=2, default=[256, 256], 
+                        help="Taille de redimensionnement des images [largeur hauteur] (défaut: 256 256)")
+    parser.add_argument("--bg-color", type=int, nargs=3, default=[255, 255, 255], 
+                        help="Couleur de fond RGB [R G B] (défaut: 255 255 255 pour blanc)")
+    
+    # NOUVELLES OPTIONS pour l'extraction depuis grille
+    parser.add_argument("--split-grid", type=str, 
+                        help="Extraire les images individuelles d'une grille d'images")
+    parser.add_argument("--rows", type=int, 
+                        help="Nombre de lignes dans la grille (optionnel)")
+    parser.add_argument("--cell-width", type=int, default=512,
+                        help="Largeur de chaque cellule en pixels (défaut: 512)")
+    parser.add_argument("--cell-height", type=int, default=512,
+                        help="Hauteur de chaque cellule en pixels (défaut: 512)")
+    parser.add_argument("--padding", type=int, default=0,
+                        help="Pixels de padding à ignorer autour de chaque cellule (défaut: 0)")
+    
     args = parser.parse_args()
+    
+    analyzer = NPZAnalyzer()
+    
+    # Mode spécial: extraction depuis grille
+    if args.split_grid:
+        print("🚀 Mode extraction depuis grille - Démarrage...")
+        print(f"📁 Grille source: {args.split_grid}")
+        
+        output_dir = args.output if args.output != "./npz_extracted" else None
+        
+        success = analyzer.split_grid_image(
+            grid_path=args.split_grid,
+            output_dir=output_dir,
+            rows=args.rows,
+            cols=args.cols,
+            cell_width=args.cell_width,
+            cell_height=args.cell_height,
+            padding=args.padding
+        )
+        
+        if success:
+            print("✨ Extraction réussie!")
+        else:
+            print("❌ Échec de l'extraction")
+        return
+    
+    # Mode spécial: création de grille à partir d'un dossier d'images
+    if args.image_grid:
+        print("🚀 Mode création de grille d'images - Démarrage...")
+        print(f"📁 Dossier source: {args.image_grid}")
+        
+        # Paramètres optionnels
+        output_path = args.output if args.output != "./npz_extracted" else None
+        
+        success = analyzer.create_grid_from_folder(
+            folder_path=args.image_grid,
+            output_path=output_path,
+            max_images=args.max_images,
+            cols=args.cols,
+            image_size=tuple(args.image_size),
+            background_color=tuple(args.bg_color)
+        )
+        
+        if success:
+            print("✨ Grille créée avec succès!")
+        else:
+            print("❌ Échec de la création de la grille")
+        return
+    
+    # Vérifier qu'un input est fourni pour les autres modes
+    if not args.input:
+        parser.error("Un chemin d'entrée est requis (sauf pour --image-grid ou --split-grid)")
     
     # Valeurs par défaut si aucune option d'extraction n'est spécifiée
     if not args.analyze_only and not args.individual and not args.grid:
@@ -482,7 +811,6 @@ Exemples d'utilisation:
         print(f"🖼️  Images individuelles: {'✅' if args.individual else '❌'}")
         print(f"🔳 Grille d'images: {'✅' if args.grid else '❌'}")
     
-    analyzer = NPZAnalyzer()
     analyzer.process_path(args.input, args.output, args.individual, args.grid, args.analyze_only)
     
     print("✨ Terminé!")
