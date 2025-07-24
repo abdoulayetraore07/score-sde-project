@@ -143,7 +143,7 @@ score-sde-project/
 - Robust performance across different visual domains
 
 ### Limitations
-- High computational requirements (€300 for AFHQ-512 training)
+- High computational requirements (for AFHQ-512 training)
 - Symmetry challenges at very high resolutions (1024×1024)
 - Classifier guidance requires dataset-specific hyperparameter tuning
 - Slow sampling speed compared to other generative approaches
