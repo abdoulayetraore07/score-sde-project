@@ -155,19 +155,6 @@ score-sde-project/
 - ml_collections for configuration management
 - Standard ML libraries: numpy, scipy, PIL, matplotlib
 
-## Citation
-
-If you use this work in your research, please cite:
-
-```bibtex
-@misc{traore2025score,
-  title={From Noise to Images: Implementing Score-Based Generative Models using Stochastic Differential Equations},
-  author={Abdoulaye Traore},
-  year={2025},
-  institution={ENSTA Paris, University of Torino},
-  type={Research Internship Report}
-}
-```
 
 ## Acknowledgments
 
